@@ -2,7 +2,7 @@ import { lapTime, teamColour, TYRES } from "../format";
 import type { Board, Strategy } from "../types";
 
 /** Every car's stints laid along the race, with the current stint's tyre trend. */
-export function StrategyPanel({ board, strategy, selected }: { board: Board; strategy: Strategy | null; selected: number | null }) {
+export function StrategyPanel({ board, strategy, team }: { board: Board; strategy: Strategy | null; team: string | null }) {
   const total = Math.max(board.laps ?? 0, board.lap, 1);
   return (
     <section className="panel strategy" aria-label="Tyre strategy">
@@ -17,7 +17,7 @@ export function StrategyPanel({ board, strategy, selected }: { board: Board; str
           const s = strategy?.cars[String(c.car)];
           const deg = s?.deg_ms_per_lap;
           return (
-            <div key={c.car} className={`stint-row${c.car === selected ? " selected" : ""}`}>
+            <div key={c.car} className={`stint-row${team != null && c.team === team ? " ours" : ""}`}>
               <span className="code small" style={{ borderColor: teamColour(c.colour) }}>
                 {c.code}
               </span>

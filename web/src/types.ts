@@ -26,6 +26,9 @@ export interface BoardCar {
   personal_best: boolean;
   fastest_lap: boolean;
   sectors_ms: (number | null)[];
+  sector_status: ("purple" | "green" | "yellow" | null)[];
+  best_sectors_ms: (number | null)[];
+  start_position: number | null;
   compound: string | null;
   tyre_age: number | null;
   pits: number;
@@ -60,6 +63,7 @@ export interface Board {
   weather: Weather | null;
   messages: Message[];
   fastest_lap: { car: number; lap_time_ms: number } | null;
+  best_sectors_ms: (number | null)[];
   cars: BoardCar[];
 }
 
@@ -109,6 +113,22 @@ export interface Replay {
   detail?: string;
   sent?: number;
   race_t?: number | null;
+}
+
+export interface CatalogRace {
+  race: string;
+  location: string;
+  country: string;
+  circuit: string;
+  starts_at: string;
+  state: "ready" | "missing" | "queued" | "downloading" | "failed" | "upcoming";
+  free_from: string;
+  detail: string;
+}
+
+export interface Trace {
+  laps: number;
+  cars: Record<string, [number, number][]>;
 }
 
 export interface RaceOnDisk {

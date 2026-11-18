@@ -94,14 +94,18 @@ async def get_state() -> dict:
 @api.websocket("/ws")
 async def stream(socket: WebSocket) -> None:
     await socket.accept()
-    watch: dict = {"car": None, "after": None}
+    # Up to two cars' telemetry (a team's pair), each with the last sample sent.
+    watch: dict[int, int | None] = {}
     sent = {"board": -1, "strategy": -1, "positions": -1, "track": None}
 
     async def receive() -> None:
         while True:
             message = json.loads(await socket.receive_text())
             if "watch" in message:
-                watch["car"], watch["after"] = int(message["watch"]), None
+                wanted = message["watch"]
+                cars = wanted if isinstance(wanted, list) else [wanted]
+                watch.clear()
+                watch.update({int(car): None for car in cars[:2] if car is not None})
 
     async def send() -> None:
         while True:
@@ -116,11 +120,14 @@ async def stream(socket: WebSocket) -> None:
             track = live.track()
             if track and sent["track"] != track["race"]:
                 frame["track"], sent["track"] = track, track["race"]
-            if watch["car"] is not None:
-                samples = live.telemetry_since(watch["car"], watch["after"])
+            telemetry = {}
+            for car, after in list(watch.items()):
+                samples = live.telemetry_since(car, after)
                 if samples:
-                    frame["telemetry"] = {"car": watch["car"], "samples": samples}
-                    watch["after"] = samples[-1][0]
+                    telemetry[str(car)] = samples
+                    watch[car] = samples[-1][0]
+            if telemetry:
+                frame["telemetry"] = telemetry
             if frame:
                 await socket.send_text(json.dumps(frame, separators=(",", ":")))
             await asyncio.sleep(FRAME_EVERY)
@@ -143,6 +150,14 @@ async def laps(car: int) -> list[dict]:
     return await history.laps_of(pool, live.run, car)
 
 
+@api.get("/api/trace")
+async def trace() -> dict:
+    pool = db.get("pool")
+    if pool is None or live.run is None:
+        return {"laps": 0, "cars": {}}
+    return await history.race_trace(pool, live.run)
+
+
 async def replayer(method: str, path: str, body: bytes | None = None) -> Response:
     try:
         async with httpx.AsyncClient(timeout=10) as client:
@@ -158,6 +173,16 @@ async def replayer(method: str, path: str, body: bytes | None = None) -> Respons
 @api.get("/api/races")
 async def races() -> Response:
     return await replayer("GET", "/races")
+
+
+@api.get("/api/catalog/{year}")
+async def catalog(year: int) -> Response:
+    return await replayer("GET", f"/catalog/{year}")
+
+
+@api.post("/api/downloads")
+async def download(request: Request) -> Response:
+    return await replayer("POST", "/downloads", await request.body())
 
 
 @api.api_route("/api/replay", methods=["GET", "POST", "PATCH", "DELETE"])

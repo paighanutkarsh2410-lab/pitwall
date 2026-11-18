@@ -127,3 +127,14 @@ def test_force_downloads_again(api, fake, built):
     before = fake.requests["car_data"]
     races.fetch(api, "2024-sao-paulo", progress=lambda _: None, force=True)
     assert fake.requests["car_data"] == before * 2
+
+
+def test_a_race_is_free_half_an_hour_after_it_ends(api):
+    from datetime import datetime, timedelta
+
+    ref = races.find_race(api, "2024-sao-paulo")
+    assert ref.free_from() == ref.starts_at + timedelta(hours=3, minutes=30)  # no end time known
+    ended = races.RaceRef(
+        **{**ref.__dict__, "ends_at": datetime.fromisoformat("2024-11-03T18:00:00+00:00")}
+    )
+    assert ended.free_from().isoformat() == "2024-11-03T18:30:00+00:00"

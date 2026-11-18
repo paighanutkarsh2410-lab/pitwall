@@ -67,8 +67,33 @@ pitwall fetch 2024-sao-paulo       # download a race once (about 6 minutes)
 ```
 
 Then open **http://localhost:8080** (or http://pitwall.localtest.me:8080). The replayer starts
-São Paulo 2024 at real speed and loops it; the bar at the top picks a race, a starting lap and a
-speed. Argo CD is at http://argocd.pitwall.localtest.me:8080.
+São Paulo 2024 at real speed and loops it. Argo CD is at http://argocd.pitwall.localtest.me:8080.
+
+## The pit wall
+
+The screen is laid out the way a team's strategy screens are, around **one team's two cars**:
+pick the team at the top (Red Bull by default) and the wall takes its colour and follows its
+drivers. Team names and colours come from the race data; no team branding is used.
+
+- **Timing screen:** position and places gained, interval or gap to the leader, last lap, sector
+  times coloured purple (fastest of anyone), green (personal best) or yellow, best lap, tyre and
+  age, pit stops.
+- **The team's cars:** the gap to the car ahead and behind, last and best lap, tyre and its trend
+  (seconds per lap, from clean laps), and the **box call**: where the car would rejoin if it
+  pitted this lap, and between whom. Under a safety car the stop costs about half.
+- **Race trace:** every car's gap to the leader at the end of each lap. Pit stops are the drops,
+  a safety car is the field bunching up.
+- **Telemetry:** both cars' speed, throttle and brake over the last 50 seconds, overlaid. Click
+  any car in the timing screen to compare it with the team's lead car instead.
+- **Track map, tyre strategy and race control.**
+
+**Races** opens the race library: every season since 2023, straight from OpenF1. Downloaded
+races replay at once; any other is one click to download (a few minutes, since OpenF1's free
+tier allows 30 requests a minute). A new race appears about 30 minutes after its chequered flag.
+
+**Live races.** OpenF1 serves races live only to paying sponsors (€9.90 a month, over MQTT or
+WebSocket), and F1's own live timing needs an F1 TV subscription, so Pitwall works from the free
+archive: a race is available half an hour after it finishes.
 
 The cluster mounts `~/.pitwall` from your machine, so a race downloaded once is there for both
 the CLI and the cluster (the replayer downloads one itself if it's missing).
@@ -118,6 +143,7 @@ ignored by Git and mounted into the cluster. Without them, the pit wall shows te
 |---|---|
 | `src/pitwall/` | Event format, race download, replayer, the bus, the timing and strategy models, CLI |
 | `src/pitwall/services/` | The five services; each runs as `pitwall service <name>` |
+| `src/pitwall/live.py`, `history.py` | What the screen shows right now; TimescaleDB history and the race trace |
 | `web/` | The pit-wall screen (React, TypeScript, Vite) |
 | `deploy/charts/` | Helm charts: `pitwall` (services) and `pitwall-data` (Redpanda, TimescaleDB) |
 | `deploy/apps/`, `deploy/env/` | Argo CD applications and the local environment's values |

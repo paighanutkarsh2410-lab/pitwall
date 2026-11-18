@@ -21,6 +21,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -42,6 +43,85 @@ class Start(BaseModel):
 
 class Change(BaseModel):
     speed: float = Field(ge=0, le=200)
+
+
+class Download(BaseModel):
+    race: str = Field(pattern=r"^\d{4}-[a-z0-9-]+$")
+
+
+class Downloads:
+    """Downloads races one at a time (OpenF1's free tier allows 30 requests a minute)."""
+
+    def __init__(self) -> None:
+        self.status: dict[str, dict] = {}
+        self.queue: asyncio.Queue[str] = asyncio.Queue()
+        self.catalog: dict[int, tuple[float, list]] = {}
+
+    def request(self, race_id: str) -> dict:
+        current = self.status.get(race_id, {}).get("state")
+        if races.summary(race_id) is None and current not in {"queued", "downloading"}:
+            self.status[race_id] = {"race": race_id, "state": "queued", "detail": ""}
+            self.queue.put_nowait(race_id)
+        return self.view(race_id)
+
+    def view(self, race_id: str) -> dict:
+        if races.summary(race_id) is not None:
+            return {"race": race_id, "state": "ready", "detail": ""}
+        return self.status.get(race_id, {"race": race_id, "state": "missing", "detail": ""})
+
+    async def work(self) -> None:
+        while True:
+            race_id = await self.queue.get()
+            status = self.status[race_id]
+            status["state"] = "downloading"
+
+            def progress(message: str, status: dict = status) -> None:
+                status["detail"] = message.strip()
+
+            try:
+                await asyncio.to_thread(_fetch_with, race_id, progress)
+                status["state"], status["detail"] = "ready", ""
+            except Exception as error:
+                status["state"], status["detail"] = "failed", f"{type(error).__name__}: {error}"
+                log.warning("Download of %s failed: %s", race_id, error)
+
+    async def season(self, year: int) -> list[dict]:
+        """A year's races from OpenF1 (cached for ten minutes), marked as downloaded or not."""
+        cached = self.catalog.get(year)
+        if cached is None or time.monotonic() - cached[0] > 600:
+            refs = await asyncio.to_thread(_season, year)
+            self.catalog[year] = (time.monotonic(), refs)
+        now = datetime.now(UTC)
+        out = []
+        for ref in self.catalog[year][1]:
+            view = self.view(ref.id)
+            free = ref.free_from()
+            out.append(
+                {
+                    "race": ref.id,
+                    "location": ref.location,
+                    "country": ref.country,
+                    "circuit": ref.circuit,
+                    "starts_at": ref.starts_at.isoformat(),
+                    "state": view["state"] if now >= free else "upcoming",
+                    "free_from": free.isoformat(),
+                    "detail": view["detail"],
+                }
+            )
+        return out
+
+
+def _season(year: int) -> list:
+    with OpenF1() as api:
+        return races.list_races(api, year)
+
+
+def _fetch_with(race_id: str, progress) -> None:
+    with OpenF1() as api:
+        races.fetch(api, race_id, progress=progress)
+
+
+downloads = Downloads()
 
 
 @dataclass
@@ -97,8 +177,13 @@ class Replayer:
             summary = races.summary(run.race)
             if summary is None:
                 run.state, run.detail = "downloading", "fetching the race from OpenF1"
-                await asyncio.to_thread(self._fetch, run.race)
+                downloads.request(run.race)
+                while downloads.view(run.race)["state"] in {"queued", "downloading"}:
+                    run.detail = downloads.view(run.race)["detail"] or run.detail
+                    await asyncio.sleep(1)
                 summary = races.summary(run.race)
+                if summary is None:
+                    raise RuntimeError(downloads.view(run.race)["detail"] or "download failed")
             start_t = None
             if run.from_lap > 0:
                 start_t = summary["lap_starts"].get(str(run.from_lap))
@@ -138,11 +223,6 @@ class Replayer:
             run.state, run.detail = "failed", f"{type(error).__name__}: {error}"
             log.exception("Run %s failed", run.id)
 
-    @staticmethod
-    def _fetch(race_id: str) -> None:
-        with OpenF1() as api:
-            races.fetch(api, race_id, progress=lambda m: log.info("%s", m))
-
 
 replayer = Replayer()
 
@@ -151,6 +231,7 @@ async def work(health: Health) -> None:
     await bus.ensure_topics()
     replayer.producer = bus.producer(linger_ms=20)
     await replayer.producer.start()
+    downloader = asyncio.create_task(downloads.work(), name="downloads")
     health.ready, health.detail = True, "connected to Redpanda"
     autostart = os.environ.get("PITWALL_AUTOSTART")
     if autostart and replayer.current is None:
@@ -159,6 +240,7 @@ async def work(health: Health) -> None:
     try:
         await asyncio.Event().wait()  # serve requests until shut down
     finally:
+        downloader.cancel()
         await replayer.stop()
         await replayer.producer.stop()
 
@@ -189,6 +271,23 @@ async def list_races() -> list[dict]:
             }
         )
     return found
+
+
+@api.get("/catalog/{year}")
+async def catalog(year: int) -> list[dict]:
+    if not 2023 <= year <= datetime.now(UTC).year:
+        raise HTTPException(404, "OpenF1 has races from 2023 onwards")
+    return await downloads.season(year)
+
+
+@api.post("/downloads", status_code=202)
+async def download(request: Download) -> dict:
+    return downloads.request(request.race)
+
+
+@api.get("/downloads/{race}")
+async def download_status(race: str) -> dict:
+    return downloads.view(race)
 
 
 @api.get("/replays/current")

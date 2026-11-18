@@ -166,6 +166,18 @@ async def laps_of(pool, run: str, car: int) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def race_trace(pool, run: str) -> dict:
+    """Gap to the leader at the end of every lap, for every car: the strategists' race trace."""
+    rows = await pool.fetch("SELECT car, lap, t FROM laps WHERE run = $1 ORDER BY lap, t", run)
+    leader: dict[int, int] = {}
+    cars: dict[str, list] = {}
+    for r in rows:
+        leader.setdefault(r["lap"], r["t"])  # ordered by t: the first car to finish the lap
+        gap = round((r["t"] - leader[r["lap"]]) / 1000, 3)
+        cars.setdefault(str(r["car"]), []).append([r["lap"], gap])
+    return {"laps": max(leader, default=0), "cars": cars}
+
+
 async def wait_for_db(attempts: int = 30) -> object:
     for attempt in range(attempts):
         try:

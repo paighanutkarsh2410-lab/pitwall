@@ -55,6 +55,17 @@ export const TRACK_STATUS: Record<string, { label: string; tone: string }> = {
   CHEQUERED: { label: "Chequered flag", tone: "chequered" },
 };
 
+/** Dark or light text, whichever reads better on this colour (WCAG relative luminance). */
+export function onColour(hex: string): string {
+  const c = hex.replace("#", "");
+  if (!/^[0-9a-f]{6}$/i.test(c)) return "#0b0d10";
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const v = parseInt(c.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.22 ? "#0b0d10" : "#ffffff";
+}
+
 export function teamColour(colour: string | null | undefined): string {
   return colour && /^[0-9a-f]{6}$/i.test(colour) ? `#${colour}` : "#8a8f98";
 }

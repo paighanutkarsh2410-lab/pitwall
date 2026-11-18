@@ -83,3 +83,23 @@ def test_yellow_sectors_come_and_go():
     assert yellow == {4}
     track_status("GREEN", {**sector, "flag": "CLEAR"}, yellow)
     assert yellow == set()
+
+
+def lap_event(car, lap, t, sectors):
+    data = {"lap": lap, "lap_time_ms": sum(sectors), "sectors_ms": sectors,
+            "pit_out_lap": False, "speed_trap_kph": None}  # fmt: skip
+    return {"type": "lap.completed", "t": t, "car": car, "data": data}
+
+
+def test_sectors_are_coloured_like_a_timing_screen():
+    board = Board()
+    board.apply(lap_event(1, 1, 100, [30_000, 40_000, 20_000]))
+    assert board.car(1).sector_status == ["purple", "purple", "purple"]  # first times set
+    board.apply(lap_event(4, 1, 101, [29_500, 40_500, 20_000]))
+    # Faster than anyone in S1; slower than car 1 in S2 but his own best; equal-best S3.
+    assert board.car(4).sector_status == ["purple", "green", "purple"]
+    board.apply(lap_event(1, 2, 200, [30_100, 39_000, 21_000]))
+    # Slower than his own S1 (yellow), fastest of all in S2, slower than his own S3.
+    assert board.car(1).sector_status == ["yellow", "purple", "yellow"]
+    assert board.car(1).best_sectors_ms == [30_000, 39_000, 20_000]
+    assert board.snapshot()["best_sectors_ms"] == [29_500, 39_000, 20_000]

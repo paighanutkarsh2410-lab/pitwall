@@ -121,5 +121,6 @@ class Live:
         return {str(car): [x, y] for car, (x, y, _) in self.positions.items()}
 
     def telemetry_since(self, car: int, after_t: int | None) -> list[tuple]:
+        """A car's samples newer than after_t (the last one already sent to a browser)."""
         samples = self.telemetry.get(car, ())
         return [s for s in samples if after_t is None or s[0] > after_t]

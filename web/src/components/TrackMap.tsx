@@ -23,13 +23,15 @@ export function TrackMap({
   board,
   track,
   positions,
-  selected,
+  team,
+  focus,
   onSelect,
 }: {
   board: Board;
   track: Track | null;
   positions: Record<string, [number, number]>;
-  selected: number | null;
+  team: string | null;
+  focus: number | null;
   onSelect: (car: number) => void;
 }) {
   // Fit the outline into the square (y pointing up); until it's traced, fit the cars instead.
@@ -42,7 +44,9 @@ export function TrackMap({
     return `${d.join(" ")} Z`;
   }, [outlineFit, track]);
 
-  const cars = [...board.cars].reverse(); // leader drawn last, on top
+  const ours = (carTeam: string) => team != null && carTeam === team;
+  // Team cars and the focused car drawn last, on top of the field.
+  const cars = [...board.cars].reverse().sort((a, b) => Number(ours(a.team) || a.car === focus) - Number(ours(b.team) || b.car === focus));
   return (
     <section className="panel map" aria-label="Track map">
       <header className="panel-head">
@@ -61,15 +65,16 @@ export function TrackMap({
             const p = positions[String(c.car)];
             if (!p) return null;
             const [x, y] = fit(p[0], p[1]);
-            const isSelected = c.car === selected;
+            const isOurs = ours(c.team);
+            const isFocus = c.car === focus;
             return (
               <g
                 key={c.car}
-                className={`car-dot${isSelected ? " selected" : ""}${c.in_pit ? " in-pit" : ""}`}
+                className={`car-dot${isOurs ? " ours" : " field"}${isFocus ? " focus" : ""}${c.in_pit ? " in-pit" : ""}`}
                 style={{ transform: `translate(${x}px, ${y}px)` }}
                 onClick={() => onSelect(c.car)}
               >
-                <circle r={isSelected ? 17 : 12} fill={teamColour(c.colour)} />
+                <circle r={isOurs || isFocus ? 17 : 11} fill={teamColour(c.colour)} />
                 <text y={-22} textAnchor="middle">
                   {c.code}
                 </text>

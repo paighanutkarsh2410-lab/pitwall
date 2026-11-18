@@ -27,6 +27,11 @@ class Car:
     best_lap_ms: int | None = None
     personal_best: bool = False  # the last lap was the car's best so far
     sectors_ms: list[int | None] = field(default_factory=lambda: [None, None, None])
+    # Each sector of the last lap as the timing screens colour it: purple (fastest of anyone so
+    # far), green (the car's own best) or yellow.
+    sector_status: list[str | None] = field(default_factory=lambda: [None, None, None])
+    best_sectors_ms: list[int | None] = field(default_factory=lambda: [None, None, None])
+    start_position: int | None = None
     gap_to_leader: float | str | None = None
     interval: float | str | None = None
     compound: str | None = None
@@ -59,6 +64,7 @@ class Board:
         self.weather: dict | None = None
         self.messages: deque[dict] = deque(maxlen=self.messages_kept)
         self.fastest: tuple[int, int] | None = None  # (ms, car)
+        self.best_sectors: list[int | None] = [None, None, None]
 
     def car(self, number: int) -> Car:
         if number not in self.cars:
@@ -106,6 +112,7 @@ class Board:
         c = self.car(car)
         c.laps_done = max(c.laps_done, d["lap"])
         c.sectors_ms = list(d["sectors_ms"])
+        c.sector_status = [self._sector(c, i, ms) for i, ms in enumerate(d["sectors_ms"][:3])]
         c.last_lap_ms = d["lap_time_ms"]
         c.personal_best = False
         ms = d["lap_time_ms"]
@@ -115,8 +122,22 @@ class Board:
             if self.fastest is None or ms < self.fastest[0]:
                 self.fastest = (ms, car)
 
+    def _sector(self, c: Car, i: int, ms: int | None) -> str | None:
+        if ms is None:
+            return None
+        best, own = self.best_sectors[i], c.best_sectors_ms[i]
+        if own is None or ms < own:
+            c.best_sectors_ms[i] = ms
+        if best is None or ms <= best:
+            self.best_sectors[i] = ms
+            return "purple"
+        return "green" if own is None or ms <= own else "yellow"
+
     def _race_position(self, e: dict, d: dict, car: int) -> None:
-        self.car(car).position = d["position"]
+        c = self.car(car)
+        c.position = d["position"]
+        if c.start_position is None and self.lap <= 1:
+            c.start_position = d["position"]
 
     def _race_interval(self, e: dict, d: dict, car: int) -> None:
         c = self.car(car)
@@ -166,6 +187,7 @@ class Board:
             "yellow_sectors": sorted(self.yellow_sectors),
             "weather": self.weather,
             "messages": list(self.messages),
+            "best_sectors_ms": self.best_sectors,
             "fastest_lap": (
                 {"car": fastest_car, "lap_time_ms": self.fastest[0]} if self.fastest else None
             ),
@@ -185,6 +207,9 @@ class Board:
                     "personal_best": c.personal_best,
                     "fastest_lap": c.number == fastest_car,
                     "sectors_ms": c.sectors_ms,
+                    "sector_status": c.sector_status,
+                    "best_sectors_ms": c.best_sectors_ms,
+                    "start_position": c.start_position,
                     "compound": c.compound,
                     "tyre_age": c.tyre_age(),
                     "pits": c.pits,

@@ -1,7 +1,8 @@
 """A small, polite client for OpenF1 (https://openf1.org), the free source of historical race data.
 
-OpenF1 is unofficial and run by volunteers: one request at a time, a pause between requests, and
-backing off when it says it's busy.
+OpenF1 is unofficial and run by volunteers. Its free tier allows 3 requests a second and 30 a
+minute, so this client sends one request at a time, at least 2.1 s apart, and backs off when
+OpenF1 says it's busy.
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ class OpenF1:
         self,
         base_url: str = BASE_URL,
         *,
-        pause: float = 0.35,
+        pause: float = 2.1,  # 30 requests a minute, the free tier's limit
         attempts: int = 5,
         transport: httpx.BaseTransport | None = None,
         sleep: Callable[[float], None] = time.sleep,

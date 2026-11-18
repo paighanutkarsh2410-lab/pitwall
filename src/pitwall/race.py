@@ -55,6 +55,12 @@ class RaceRef:
     country: str
     circuit: str
     starts_at: datetime
+    ends_at: datetime | None = None
+
+    def free_from(self) -> datetime:
+        """OpenF1 serves a session free once it is historical: 30 minutes after it ends."""
+        end = self.ends_at or self.starts_at + timedelta(hours=3)
+        return end + timedelta(minutes=30)
 
 
 def _ref(session: dict) -> RaceRef:
@@ -67,6 +73,7 @@ def _ref(session: dict) -> RaceRef:
         country=session["country_name"],
         circuit=session["circuit_short_name"],
         starts_at=start,
+        ends_at=parse_time(session["date_end"]) if session.get("date_end") else None,
     )
 
 

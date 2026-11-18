@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Board, Sample, Strategy, Track } from "./types";
 
-const KEEP_SAMPLES = 240; // about a minute of one car's telemetry
+const KEEP_SAMPLES = 240; // about a minute of a car's telemetry
 
 export interface Live {
   connected: boolean;
@@ -9,8 +9,8 @@ export interface Live {
   strategy: Strategy | null;
   positions: Record<string, [number, number]>;
   track: Track | null;
-  samples: Sample[];
-  samplesCar: number | null;
+  /** Recent telemetry of the watched cars, by car number. */
+  samples: Record<string, Sample[]>;
 }
 
 interface Frame {
@@ -18,22 +18,22 @@ interface Frame {
   strategy?: Strategy;
   positions?: Record<string, [number, number]>;
   track?: Track;
-  telemetry?: { car: number; samples: Sample[] };
+  telemetry?: Record<string, Sample[]>;
 }
 
 /** One WebSocket to pitwall-api, reconnecting with backoff; frames arrive five times a second. */
-export function useLive(watch: number | null): Live {
+export function useLive(watch: number[]): Live {
   const [live, setLive] = useState<Live>({
     connected: false,
     board: null,
     strategy: null,
     positions: {},
     track: null,
-    samples: [],
-    samplesCar: null,
+    samples: {},
   });
   const socket = useRef<WebSocket | null>(null);
-  const watching = useRef<number | null>(watch);
+  const watching = useRef<number[]>(watch);
+  const key = watch.join(",");
 
   useEffect(() => {
     let stopped = false;
@@ -47,7 +47,7 @@ export function useLive(watch: number | null): Live {
       ws.onopen = () => {
         retry = 500;
         setLive((s) => ({ ...s, connected: true }));
-        if (watching.current != null) ws.send(JSON.stringify({ watch: watching.current }));
+        if (watching.current.length) ws.send(JSON.stringify({ watch: watching.current }));
       };
       ws.onmessage = (message) => {
         const frame = JSON.parse(message.data) as Frame;
@@ -55,7 +55,7 @@ export function useLive(watch: number | null): Live {
           const next = { ...s };
           if (frame.board) {
             if (s.board && frame.board.run !== s.board.run) {
-              next.samples = [];
+              next.samples = {};
               next.positions = {};
             }
             next.board = frame.board;
@@ -64,10 +64,11 @@ export function useLive(watch: number | null): Live {
           if (frame.positions) next.positions = frame.positions;
           if (frame.track) next.track = frame.track;
           if (frame.telemetry) {
-            const same = frame.telemetry.car === s.samplesCar;
-            const merged = same ? [...s.samples, ...frame.telemetry.samples] : frame.telemetry.samples;
-            next.samples = merged.slice(-KEEP_SAMPLES);
-            next.samplesCar = frame.telemetry.car;
+            const samples = { ...next.samples };
+            for (const [car, fresh] of Object.entries(frame.telemetry)) {
+              samples[car] = [...(samples[car] ?? []), ...fresh].slice(-KEEP_SAMPLES);
+            }
+            next.samples = samples;
           }
           return next;
         });
@@ -88,12 +89,12 @@ export function useLive(watch: number | null): Live {
   }, []);
 
   useEffect(() => {
-    watching.current = watch;
-    if (watch != null && socket.current?.readyState === WebSocket.OPEN) {
-      socket.current.send(JSON.stringify({ watch }));
+    watching.current = key ? key.split(",").map(Number) : [];
+    if (socket.current?.readyState === WebSocket.OPEN) {
+      socket.current.send(JSON.stringify({ watch: watching.current }));
     }
-    setLive((s) => ({ ...s, samples: [], samplesCar: watch }));
-  }, [watch]);
+    setLive((s) => ({ ...s, samples: {} }));
+  }, [key]);
 
   return live;
 }
