@@ -1,0 +1,10 @@
+{{- if not .Values.races.hostPath }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pitwall-races
+  labels: {{- include "pitwall.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: {{ .Values.races.storage }} } }
+{{- end }}

@@ -243,6 +243,9 @@ def cmd_replay(args: argparse.Namespace) -> int:
     async def emit(event: dict) -> None:
         write(event)
 
+    if args.to == "kafka":
+        return _replay_to_kafka(args, summary, path, types, cars)
+
     stats = Stats()
     started = time.monotonic()
     pace = "as fast as possible" if args.speed == 0 else f"at {args.speed:g}x"
@@ -271,6 +274,52 @@ def cmd_replay(args: argparse.Namespace) -> int:
         f"in {time.monotonic() - started:.1f} s.",
         file=sys.stderr,
     )
+    return 0
+
+
+def _replay_to_kafka(
+    args: argparse.Namespace, summary: dict, path: Path, types: tuple, cars: frozenset
+) -> int:
+    """Sends the race to Redpanda's pitwall.raw topic, as the in-cluster replayer does."""
+    from pitwall import bus
+
+    run = bus.new_run()
+    headers = [(bus.RUN_HEADER, run.encode())]
+
+    async def main() -> Stats:
+        await bus.ensure_topics()
+        producer = bus.producer(linger_ms=20)
+        await producer.start()
+
+        async def emit(event: dict) -> None:
+            await producer.send(bus.RAW, bus.encode(event), key=bus.key(event), headers=headers)
+
+        try:
+            return await replay(
+                races.read_jsonl(path),
+                emit,
+                speed=args.speed,
+                start_t=_start_t(summary, args.from_lap),
+                keep=Filter(types=types if args.types else (), cars=cars),
+                limit=args.limit,
+                catch_up=True,  # services joining mid-race need the race so far
+            )
+        finally:
+            await producer.stop()
+
+    print(f"Run {run}: {summary['race_id']} to {bus.brokers()} ({bus.RAW})", file=sys.stderr)
+    try:
+        stats = asyncio.run(main())
+    except KeyboardInterrupt:
+        return 0
+    print(f"Sent {stats.sent:,} events.", file=sys.stderr)
+    return 0
+
+
+def cmd_service(args: argparse.Namespace) -> int:
+    from pitwall.services import run
+
+    run(args.name, args.port)
     return 0
 
 
@@ -342,7 +391,18 @@ def parser() -> argparse.ArgumentParser:
     s.add_argument("--cars", help="Comma-separated car numbers, e.g. 1,44")
     s.add_argument("--format", choices=("pretty", "jsonl"), default="pretty")
     s.add_argument("--limit", type=int, help="Stop after this many events")
+    s.add_argument(
+        "--to",
+        choices=("stdout", "kafka"),
+        default="stdout",
+        help="Where to send events; kafka uses PITWALL_BROKERS (default localhost:9092)",
+    )
     s.set_defaults(run=cmd_replay)
+
+    s = sub.add_parser("service", help="Run one of Pitwall's services")
+    s.add_argument("name", choices=("ingest", "timing", "strategy", "api", "replayer"))
+    s.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8080")))
+    s.set_defaults(run=cmd_service)
 
     s = sub.add_parser("validate", help="Check a downloaded race against the event schema")
     s.add_argument("race")

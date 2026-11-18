@@ -1,0 +1,5 @@
+# The local kind cluster (scripts/cluster-up.sh).
+redpanda:
+  storage: 4Gi
+timescaledb:
+  storage: 4Gi

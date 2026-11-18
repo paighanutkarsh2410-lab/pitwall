@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pitwall-data
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"  # the stream and the database before the services
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/paighanutkarsh2410-lab/pitwall.git
+    targetRevision: main
+    path: deploy/charts/pitwall-data
+    helm:
+      valueFiles: [../../env/local/data.yaml]
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pitwall
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

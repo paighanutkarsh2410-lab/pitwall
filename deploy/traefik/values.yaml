@@ -1,0 +1,27 @@
+# Traefik as the cluster's ingress controller, on NodePort 30080 (port 8080 on the laptop).
+ports:
+  web:
+    nodePort: 30080
+  websecure:
+    expose:
+      default: false
+service:
+  spec:
+    type: NodePort
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+providers:
+  kubernetesIngress:
+    enabled: true
+    publishedService:
+      enabled: false
+  kubernetesCRD:
+    enabled: false
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { memory: 192Mi }
+# Publish an address on each Ingress so Argo CD can report it Healthy.
+additionalArguments:
+  - --providers.kubernetesingress.ingressendpoint.ip=127.0.0.1

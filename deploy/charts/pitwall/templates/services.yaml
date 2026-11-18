@@ -1,0 +1,102 @@
+{{- range $name, $svc := .Values.services }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    {{- include "pitwall.labels" $ | nindent 4 }}
+spec:
+  selector: { app.kubernetes.io/name: {{ $name }} }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    {{- include "pitwall.labels" $ | nindent 4 }}
+spec:
+  replicas: {{ $svc.replicas }}
+  {{- if $svc.races }}
+  strategy: { type: Recreate }  # one replayer at a time owns the race files
+  {{- end }}
+  selector:
+    matchLabels: { app.kubernetes.io/name: {{ $name }} }
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+        {{- include "pitwall.labels" $ | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: {{ $name }}
+          image: {{ include "pitwall.image" $ }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          args: [service, {{ $name }}]
+          env:
+            - { name: PORT, value: "8080" }
+            - { name: PITWALL_BROKERS, value: {{ $.Values.brokers | quote }} }
+            {{- if $svc.db }}
+            - name: PITWALL_DB_URL
+              valueFrom:
+                secretKeyRef: { name: {{ $.Values.dbSecret }}, key: PITWALL_DB_URL }
+            {{- end }}
+            {{- if eq $name "api" }}
+            - { name: PITWALL_REPLAYER_URL, value: "http://replayer:8080" }
+            - { name: PITWALL_LOGOS_DIR, value: /logos }
+            {{- end }}
+            {{- if eq $name "replayer" }}
+            - { name: PITWALL_AUTOSTART, value: {{ $.Values.replayer.autostart | quote }} }
+            - { name: PITWALL_AUTOSTART_SPEED, value: {{ $.Values.replayer.speed | quote }} }
+            - { name: PITWALL_LOOP, value: {{ $.Values.replayer.loop | quote }} }
+            {{- end }}
+          ports:
+            - { name: http, containerPort: 8080 }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources: {{- toYaml $svc.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            {{- if $svc.races }}
+            - { name: races, mountPath: /data }
+            {{- end }}
+            {{- if and (eq $name "api") $.Values.logos.hostPath }}
+            - { name: logos, mountPath: /logos, readOnly: true }
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: { medium: Memory, sizeLimit: 32Mi }
+        {{- if $svc.races }}
+        - name: races
+          {{- if $.Values.races.hostPath }}
+          hostPath: { path: {{ $.Values.races.hostPath }}, type: DirectoryOrCreate }
+          {{- else }}
+          persistentVolumeClaim: { claimName: pitwall-races }
+          {{- end }}
+        {{- end }}
+        {{- if and (eq $name "api") $.Values.logos.hostPath }}
+        - name: logos
+          hostPath: { path: {{ $.Values.logos.hostPath }}, type: DirectoryOrCreate }
+        {{- end }}
+{{- end }}

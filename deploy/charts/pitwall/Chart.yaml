@@ -1,0 +1,6 @@
+apiVersion: v2
+name: pitwall
+description: Pitwall's services (ingest, timing, strategy, api, replayer) and the pit-wall screen
+type: application
+version: 0.2.0
+appVersion: "0.2.0"

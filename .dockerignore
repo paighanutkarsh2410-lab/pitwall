@@ -1,5 +1,6 @@
 .git
 .github
+.claude
 .venv
 **/__pycache__
 **/*.egg-info
@@ -8,3 +9,7 @@
 tests
 docs
 assets
+deploy
+scripts
+web/node_modules
+web/dist

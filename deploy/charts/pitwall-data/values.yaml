@@ -1,0 +1,19 @@
+redpanda:
+  image: redpandadata/redpanda:v26.2.6
+  # Redpanda wants dedicated cores and memory; these settings let it share a laptop.
+  memory: 640M
+  storage: 4Gi
+  resources:
+    requests: { cpu: 250m, memory: 800Mi }
+    limits: { memory: 1Gi }
+
+timescaledb:
+  image: timescale/timescaledb:2.31.0-pg18
+  storage: 4Gi
+  # A Secret with POSTGRES_PASSWORD and PITWALL_DB_URL, created by scripts/cluster-up.sh so no
+  # password is ever in Git.
+  existingSecret: pitwall-db
+  tuneMemory: 512MB
+  resources:
+    requests: { cpu: 100m, memory: 384Mi }
+    limits: { memory: 768Mi }

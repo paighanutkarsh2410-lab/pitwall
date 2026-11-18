@@ -1,0 +1,50 @@
+image:
+  repository: ghcr.io/paighanutkarsh2410-lab/pitwall
+  tag: main
+  pullPolicy: IfNotPresent
+
+brokers: redpanda:9092
+# Secret with PITWALL_DB_URL (created by scripts/cluster-up.sh; never in Git).
+dbSecret: pitwall-db
+
+# One entry per service; every one runs the same image: `pitwall service <name>`.
+services:
+  ingest:
+    replicas: 1
+    db: true
+    resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { memory: 384Mi } }
+  timing:
+    replicas: 1
+    resources: { requests: { cpu: 50m, memory: 96Mi }, limits: { memory: 256Mi } }
+  strategy:
+    replicas: 1
+    resources: { requests: { cpu: 50m, memory: 96Mi }, limits: { memory: 256Mi } }
+  api:
+    replicas: 1
+    db: true
+    resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { memory: 384Mi } }
+  replayer:
+    replicas: 1
+    races: true
+    resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { memory: 512Mi } }
+
+replayer:
+  # Start this race when the replayer starts, and loop it, so the pit wall is never empty.
+  autostart: 2024-sao-paulo
+  speed: 1
+  loop: true
+
+# Where races are kept. hostPath shares the laptop's ~/.pitwall (mounted into the kind node by
+# scripts/cluster-up.sh), so a race downloaded once is there for both. Without it, a volume.
+races:
+  hostPath: ""
+  storage: 1Gi
+
+# Team logos from the laptop's assets/private/ (never in Git); empty means team-colour badges.
+logos:
+  hostPath: ""
+
+ingress:
+  # Every host the pit wall answers on. localhost works even where *.localtest.me is blocked.
+  hosts: [pitwall.localtest.me, localhost]
+  className: traefik

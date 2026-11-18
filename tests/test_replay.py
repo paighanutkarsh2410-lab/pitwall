@@ -95,3 +95,27 @@ def test_a_slow_sink_is_measured_not_hidden():
 def test_negative_speed_is_refused():
     with pytest.raises(ValueError, match="speed"):
         run(speed=-1)
+
+
+def test_a_mid_race_start_can_catch_up_without_telemetry():
+    sent, stats, _ = run(speed=1, start_t=1000, catch_up=True)
+    # Header, then everything earlier except telemetry (seq 1, 2) at once, then on schedule.
+    assert sent == [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (2.0, 5), (6.0, 6)]
+    assert stats.caught_up == 2
+
+
+def test_speed_can_change_mid_replay():
+    from pitwall.replay import Pace
+
+    clock = FakeClock()
+    pace = Pace(1)
+    sent: list[tuple[float, int]] = []
+
+    async def emit(event: dict) -> None:
+        sent.append((round(clock.now() - 100.0, 3), event["seq"]))
+        if event["seq"] == 3:
+            pace.speed = 10  # from 1x to 10x one second into the race
+
+    asyncio.run(replay(EVENTS[2:], emit, speed=pace, clock=clock))
+    # seq 5 is 2 s of race after seq 3: 0.2 s at 10x. seq 6 is 4 s later still: 0.4 s.
+    assert sent == [(0, 2), (1.0, 3), (1.0, 4), (1.2, 5), (1.6, 6)]

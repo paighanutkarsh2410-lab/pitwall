@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   test:
-    name: Lint and test
+    name: Python lint and tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,6 +24,39 @@ jobs:
       - run: ruff format --check src tests
       # Includes the check that schemas/events.v1.json matches the code.
       - run: pytest -q
+
+  web:
+    name: Pit-wall screen typecheck and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+
+  charts:
+    name: Helm charts and scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.3.1
+      - name: Lint
+        run: helm lint deploy/charts/pitwall deploy/charts/pitwall-data
+      - name: Render with the local environment's values
+        run: |
+          helm template pitwall deploy/charts/pitwall -f deploy/env/local/pitwall.yaml > /dev/null
+          helm template pitwall-data deploy/charts/pitwall-data -f deploy/env/local/data.yaml > /dev/null
+      - name: Scripts parse
+        run: for s in scripts/*.sh; do bash -n "$s"; done
 
   security:
     name: Trivy scan of the source
@@ -39,25 +72,28 @@ jobs:
           exit-code: "1"
 
   image:
-    name: Replayer image (scanned; signed on main)
-    needs: [test, security]
+    name: Image (scanned; signed on main)
+    needs: [test, web, charts, security]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write # push to GHCR
       id-token: write # keyless cosign signing
     env:
-      IMAGE: ghcr.io/${{ github.repository_owner }}/pitwall-replayer
+      IMAGE: ghcr.io/${{ github.repository_owner }}/pitwall
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Build
         run: docker build -t "$IMAGE:$GITHUB_SHA" .
 
-      - name: It runs, as a non-root user
+      - name: It runs as a non-root user, with the screen inside
         run: |
-          docker run --rm "$IMAGE:$GITHUB_SHA" --help | grep -q "replay"
+          docker run --rm "$IMAGE:$GITHUB_SHA" service --help | grep -q "ingest"
           test "$(docker run --rm --entrypoint id "$IMAGE:$GITHUB_SHA" -u)" = 10001
+          docker run --rm --entrypoint test "$IMAGE:$GITHUB_SHA" -f /srv/pitwall/web/index.html
 
       - name: Scan the image
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
@@ -89,3 +125,30 @@ jobs:
       - name: Sign
         if: github.event_name == 'push'
         run: cosign sign --yes "$IMAGE@${{ steps.push.outputs.digest }}"
+
+  # GitOps: the cluster runs exactly what CI built, scanned and signed. This commits the new
+  # image tag into deploy/env/local/pitwall.yaml; Argo CD sees the commit and rolls it out.
+  promote:
+    name: Promote to the local environment
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency: promote
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Point the local environment at this commit's image
+        run: |
+          sed -i -E "s|^(  tag: ).*|\1${GITHUB_SHA}|" deploy/env/local/pitwall.yaml
+          git diff --quiet && { echo "Already deployed"; exit 0; }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Deploy ${GITHUB_SHA::7} to the local environment [skip ci]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1

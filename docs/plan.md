@@ -29,7 +29,7 @@ automatically; then the trackside link is cut for 60 seconds and not one data po
 
 *Done when* `pitwall replay 2024-sao-paulo --speed 10` streams a real race and CI is green.
 
-## Phase 1: The pipeline on one cluster
+## Phase 1: The pipeline on one cluster ✅
 
 - Redpanda with topics for telemetry, timing and race control; the replayer gets a Kafka sink
 - Services: **ingest** (validate, tag), **timing** (laps, gaps, positions), **strategy** (stints,
