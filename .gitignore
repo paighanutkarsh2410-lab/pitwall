@@ -1,0 +1,20 @@
+# Python
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Downloaded races, if PITWALL_HOME points inside the repo
+data/
+
+# Team logos and other artwork you can use locally but must never publish (see README)
+assets/private/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,1229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/paighanutkarsh2410-lab/pitwall/schemas/events.v1.json",
+  "title": "Pitwall event, version 1",
+  "$defs": {
+    "CarPosition": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "title": "X",
+          "type": "integer"
+        },
+        "y": {
+          "title": "Y",
+          "type": "integer"
+        },
+        "z": {
+          "title": "Z",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "z"
+      ],
+      "title": "CarPosition",
+      "type": "object"
+    },
+    "CarPositionEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "race": {
+          "title": "Race",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "t": {
+          "description": "Milliseconds since the scheduled start",
+          "title": "T",
+          "type": "integer"
+        },
+        "at": {
+          "description": "UTC time the data was recorded",
+          "title": "At",
+          "type": "string"
+        },
+        "car": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Car"
+        },
+        "type": {
+          "const": "car.position",
+          "title": "Type",
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/$defs/CarPosition"
+        }
+      },
+      "required": [
+        "race",
+        "seq",
+        "t",
+        "at",
+        "type",
+        "data"
+      ],
+      "title": "CarPositionEvent",
+      "type": "object"
+    },
+    "CarTelemetry": {
+      "additionalProperties": false,
+      "properties": {
+        "speed": {
+          "description": "km/h",
+          "title": "Speed",
+          "type": "integer"
+        },
+        "rpm": {
+          "title": "Rpm",
+          "type": "integer"
+        },
+        "gear": {
+          "title": "Gear",
+          "type": "integer"
+        },
+        "throttle": {
+          "description": "Percent",
+          "title": "Throttle",
+          "type": "integer"
+        },
+        "brake": {
+          "description": "0 or 100",
+          "title": "Brake",
+          "type": "integer"
+        },
+        "drs": {
+          "description": "Raw DRS state code; 10, 12 and 14 mean open",
+          "title": "Drs",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "speed",
+        "rpm",
+        "gear",
+        "throttle",
+        "brake",
+        "drs"
+      ],
+      "title": "CarTelemetry",
+      "type": "object"
+    },
+    "CarTelemetryEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "race": {
+          "title": "Race",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "t": {
+          "description": "Milliseconds since the scheduled start",
+          "title": "T",
+          "type": "integer"
+        },
+        "at": {
+          "description": "UTC time the data was recorded",
+          "title": "At",
+          "type": "string"
+        },
+        "car": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Car"
+        },
+        "type": {
+          "const": "car.telemetry",
+          "title": "Type",
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/$defs/CarTelemetry"
+        }
+      },
+      "required": [
+        "race",
+        "seq",
+        "t",
+        "at",
+        "type",
+        "data"
+      ],
+      "title": "CarTelemetryEvent",
+      "type": "object"
+    },
+    "Driver": {
+      "additionalProperties": false,
+      "properties": {
+        "number": {
+          "title": "Number",
+          "type": "integer"
+        },
+        "code": {
+          "description": "Three-letter code, e.g. VER",
+          "title": "Code",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "team": {
+          "title": "Team",
+          "type": "string"
+        },
+        "colour": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Team colour as hex RGB, no #",
+          "title": "Colour"
+        },
+        "country": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Country"
+        }
+      },
+      "required": [
+        "number",
+        "code",
+        "name",
+        "team"
+      ],
+      "title": "Driver",
+      "type": "object"
+    },
+    "Interval": {
+      "additionalProperties": false,
+      "properties": {
+        "gap_to_leader": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Seconds, or text such as '+1 LAP'",
+          "title": "Gap To Leader"
+        },
+        "interval": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "To the car ahead; seconds or text",
+          "title": "Interval"
+        }
+      },
+      "required": [
+        "gap_to_leader",
+        "interval"
+      ],
+      "title": "Interval",
+      "type": "object"
+    },
+    "IntervalEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "race": {
+          "title": "Race",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "t": {
+          "description": "Milliseconds since the scheduled start",
+          "title": "T",
+          "type": "integer"
+        },
+        "at": {
+          "description": "UTC time the data was recorded",
+          "title": "At",
+          "type": "string"
+        },
+        "car": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Car"
+        },
+        "type": {
+          "const": "race.interval",
+          "title": "Type",
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/$defs/Interval"
+        }
+      },
+      "required": [
+        "race",
+        "seq",
+        "t",
+        "at",
+        "type",
+        "data"
+      ],
+      "title": "IntervalEvent",
+      "type": "object"
+    },
+    "LapCompleted": {
+      "additionalProperties": false,
+      "properties": {
+        "lap": {
+          "title": "Lap",
+          "type": "integer"
+        },
+        "lap_time_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Lap Time Ms"
+        },
+        "sectors_ms": {
+          "description": "Sector 1, 2 and 3 times",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Sectors Ms",
+          "type": "array"
+        },
+        "pit_out_lap": {
+          "title": "Pit Out Lap",
+          "type": "boolean"
+        },
+        "speed_trap_kph": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Speed Trap Kph"
+        }
+      },
+      "required": [
+        "lap",
+        "lap_time_ms",
+        "sectors_ms",
+        "pit_out_lap"
+      ],
+      "title": "LapCompleted",
+      "type": "object"
+    },
+    "LapCompletedEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "race": {
+          "title": "Race",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "t": {
+          "description": "Milliseconds since the scheduled start",
+          "title": "T",
+          "type": "integer"
+        },
+        "at": {
+          "description": "UTC time the data was recorded",
+          "title": "At",
+          "type": "string"
+        },
+        "car": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Car"
+        },
+        "type": {
+          "const": "lap.completed",
+          "title": "Type",
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/$defs/LapCompleted"
+        }
+      },
+      "required": [
+        "race",
+        "seq",
+        "t",
+        "at",
+        "type",
+        "data"
+      ],
+      "title": "LapCompletedEvent",
+      "type": "object"
+    },
+    "LapStarted": {
+      "additionalProperties": false,
+      "properties": {
+        "lap": {
+          "title": "Lap",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "lap"
+      ],
+      "title": "LapStarted",
+      "type": "object"
+    },
+    "LapStartedEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "race": {
+          "title": "Race",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "t": {
+          "description": "Milliseconds since the scheduled start",
+          "title": "T",
+          "type": "integer"
+        },
+        "at": {
+          "description": "UTC time the data was recorded",
+          "title": "At",
+          "type": "string"
+        },
+        "car": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Car"
+        },
+        "type": {
+          "const": "lap.started",
+          "title": "Type",
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/$defs/LapStarted"
+        }
+      },
+      "required": [
+        "race",
+        "seq",
+        "t",
+        "at",
+        "type",
+        "data"
+      ],
+      "title": "LapStartedEvent",
+      "type": "object"
+    },
+    "PitStop": {
+      "additionalProperties": false,
+      "properties": {
+        "lap": {
+          "title": "Lap",
+          "type": "integer"
+        },
+        "pit_lane_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Time in the pit lane, entry to exit",
+          "title": "Pit Lane Ms"
+        },
+        "stop_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Time stationary in the box",
+          "title": "Stop Ms"
+        }
+      },
+      "required": [
+        "lap",
+        "pit_lane_ms"
+      ],
+      "title": "PitStop",
+      "type": "object"
+    },
+    "PitStopEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "race": {
+          "title": "Race",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "t": {
+          "description": "Milliseconds since the scheduled start",
+          "title": "T",
+          "type": "integer"
+        },
+        "at": {
+          "description": "UTC time the data was recorded",
+          "title": "At",
+          "type": "string"
+        },
+        "car": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Car"
+        },
+        "type": {
+          "const": "pit.stop",
+          "title": "Type",
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/$defs/PitStop"
+        }
+      },
+      "required": [
+        "race",
+        "seq",
+        "t",
+        "at",
+        "type",
+        "data"
+      ],
+      "title": "PitStopEvent",
+      "type": "object"
+    },
+    "RaceControl": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "flag": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Flag"
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scope"
+        },
+        "sector": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sector"
+        },
+        "lap": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lap"
+        }
+      },
+      "required": [
+        "category",
+        "message"
+      ],
+      "title": "RaceControl",
+      "type": "object"
+    },
+    "RaceControlEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "race": {
+          "title": "Race",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "t": {
+          "description": "Milliseconds since the scheduled start",
+          "title": "T",
+          "type": "integer"
+        },
+        "at": {
+          "description": "UTC time the data was recorded",
+          "title": "At",
+          "type": "string"
+        },
+        "car": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Car"
+        },
+        "type": {
+          "const": "race.control",
+          "title": "Type",
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/$defs/RaceControl"
+        }
+      },
+      "required": [
+        "race",
+        "seq",
+        "t",
+        "at",
+        "type",
+        "data"
+      ],
+      "title": "RaceControlEvent",
+      "type": "object"
+    },
+    "RacePosition": {
+      "additionalProperties": false,
+      "properties": {
+        "position": {
+          "title": "Position",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "position"
+      ],
+      "title": "RacePosition",
+      "type": "object"
+    },
+    "RacePositionEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "race": {
+          "title": "Race",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "t": {
+          "description": "Milliseconds since the scheduled start",
+          "title": "T",
+          "type": "integer"
+        },
+        "at": {
+          "description": "UTC time the data was recorded",
+          "title": "At",
+          "type": "string"
+        },
+        "car": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Car"
+        },
+        "type": {
+          "const": "race.position",
+          "title": "Type",
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/$defs/RacePosition"
+        }
+      },
+      "required": [
+        "race",
+        "seq",
+        "t",
+        "at",
+        "type",
+        "data"
+      ],
+      "title": "RacePositionEvent",
+      "type": "object"
+    },
+    "SessionInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "race_id": {
+          "title": "Race Id",
+          "type": "string"
+        },
+        "name": {
+          "description": "e.g. São Paulo Grand Prix",
+          "title": "Name",
+          "type": "string"
+        },
+        "circuit": {
+          "title": "Circuit",
+          "type": "string"
+        },
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "country": {
+          "title": "Country",
+          "type": "string"
+        },
+        "year": {
+          "title": "Year",
+          "type": "integer"
+        },
+        "starts_at": {
+          "description": "Scheduled start, UTC; t=0",
+          "title": "Starts At",
+          "type": "string"
+        },
+        "laps": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Laps the leader completed",
+          "title": "Laps"
+        },
+        "drivers": {
+          "items": {
+            "$ref": "#/$defs/Driver"
+          },
+          "title": "Drivers",
+          "type": "array"
+        }
+      },
+      "required": [
+        "race_id",
+        "name",
+        "circuit",
+        "location",
+        "country",
+        "year",
+        "starts_at",
+        "drivers"
+      ],
+      "title": "SessionInfo",
+      "type": "object"
+    },
+    "SessionInfoEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "race": {
+          "title": "Race",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "t": {
+          "description": "Milliseconds since the scheduled start",
+          "title": "T",
+          "type": "integer"
+        },
+        "at": {
+          "description": "UTC time the data was recorded",
+          "title": "At",
+          "type": "string"
+        },
+        "car": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Car"
+        },
+        "type": {
+          "const": "session.info",
+          "title": "Type",
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/$defs/SessionInfo"
+        }
+      },
+      "required": [
+        "race",
+        "seq",
+        "t",
+        "at",
+        "type",
+        "data"
+      ],
+      "title": "SessionInfoEvent",
+      "type": "object"
+    },
+    "TyreStint": {
+      "additionalProperties": false,
+      "properties": {
+        "stint": {
+          "title": "Stint",
+          "type": "integer"
+        },
+        "compound": {
+          "description": "SOFT, MEDIUM, HARD, INTERMEDIATE or WET",
+          "title": "Compound",
+          "type": "string"
+        },
+        "lap_start": {
+          "title": "Lap Start",
+          "type": "integer"
+        },
+        "lap_end": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Lap End"
+        },
+        "tyre_age": {
+          "description": "Laps on the tyres when the stint started",
+          "title": "Tyre Age",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "stint",
+        "compound",
+        "lap_start",
+        "lap_end",
+        "tyre_age"
+      ],
+      "title": "TyreStint",
+      "type": "object"
+    },
+    "TyreStintEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "race": {
+          "title": "Race",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "t": {
+          "description": "Milliseconds since the scheduled start",
+          "title": "T",
+          "type": "integer"
+        },
+        "at": {
+          "description": "UTC time the data was recorded",
+          "title": "At",
+          "type": "string"
+        },
+        "car": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Car"
+        },
+        "type": {
+          "const": "tyre.stint",
+          "title": "Type",
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/$defs/TyreStint"
+        }
+      },
+      "required": [
+        "race",
+        "seq",
+        "t",
+        "at",
+        "type",
+        "data"
+      ],
+      "title": "TyreStintEvent",
+      "type": "object"
+    },
+    "Weather": {
+      "additionalProperties": false,
+      "properties": {
+        "air_c": {
+          "title": "Air C",
+          "type": "number"
+        },
+        "track_c": {
+          "title": "Track C",
+          "type": "number"
+        },
+        "humidity": {
+          "title": "Humidity",
+          "type": "number"
+        },
+        "pressure_mbar": {
+          "title": "Pressure Mbar",
+          "type": "number"
+        },
+        "rainfall": {
+          "title": "Rainfall",
+          "type": "boolean"
+        },
+        "wind_ms": {
+          "title": "Wind Ms",
+          "type": "number"
+        },
+        "wind_dir": {
+          "title": "Wind Dir",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "air_c",
+        "track_c",
+        "humidity",
+        "pressure_mbar",
+        "rainfall",
+        "wind_ms",
+        "wind_dir"
+      ],
+      "title": "Weather",
+      "type": "object"
+    },
+    "WeatherEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "race": {
+          "title": "Race",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "t": {
+          "description": "Milliseconds since the scheduled start",
+          "title": "T",
+          "type": "integer"
+        },
+        "at": {
+          "description": "UTC time the data was recorded",
+          "title": "At",
+          "type": "string"
+        },
+        "car": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Car"
+        },
+        "type": {
+          "const": "weather",
+          "title": "Type",
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/$defs/Weather"
+        }
+      },
+      "required": [
+        "race",
+        "seq",
+        "t",
+        "at",
+        "type",
+        "data"
+      ],
+      "title": "WeatherEvent",
+      "type": "object"
+    }
+  },
+  "discriminator": {
+    "mapping": {
+      "car.position": "#/$defs/CarPositionEvent",
+      "car.telemetry": "#/$defs/CarTelemetryEvent",
+      "lap.completed": "#/$defs/LapCompletedEvent",
+      "lap.started": "#/$defs/LapStartedEvent",
+      "pit.stop": "#/$defs/PitStopEvent",
+      "race.control": "#/$defs/RaceControlEvent",
+      "race.interval": "#/$defs/IntervalEvent",
+      "race.position": "#/$defs/RacePositionEvent",
+      "session.info": "#/$defs/SessionInfoEvent",
+      "tyre.stint": "#/$defs/TyreStintEvent",
+      "weather": "#/$defs/WeatherEvent"
+    },
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/SessionInfoEvent"
+    },
+    {
+      "$ref": "#/$defs/CarTelemetryEvent"
+    },
+    {
+      "$ref": "#/$defs/CarPositionEvent"
+    },
+    {
+      "$ref": "#/$defs/LapStartedEvent"
+    },
+    {
+      "$ref": "#/$defs/LapCompletedEvent"
+    },
+    {
+      "$ref": "#/$defs/TyreStintEvent"
+    },
+    {
+      "$ref": "#/$defs/PitStopEvent"
+    },
+    {
+      "$ref": "#/$defs/RacePositionEvent"
+    },
+    {
+      "$ref": "#/$defs/IntervalEvent"
+    },
+    {
+      "$ref": "#/$defs/RaceControlEvent"
+    },
+    {
+      "$ref": "#/$defs/WeatherEvent"
+    }
+  ]
+}
