@@ -49,8 +49,17 @@ spec:
           resources: {{- toYaml .Values.timescaledb.resources | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
           volumeMounts:
             - { name: data, mountPath: /var/lib/postgresql/data }
+            # Postgres's socket and lock files, and scratch space.
+            - { name: run, mountPath: /var/run/postgresql }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: run
+          emptyDir: { medium: Memory, sizeLimit: 8Mi }
+        - name: tmp
+          emptyDir: { medium: Memory, sizeLimit: 64Mi }
   volumeClaimTemplates:
     - metadata: { name: data }
       spec:

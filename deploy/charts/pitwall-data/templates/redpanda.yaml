@@ -59,9 +59,18 @@ spec:
           resources: {{- toYaml .Values.redpanda.resources | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities: { drop: [ALL] }
           volumeMounts:
             - { name: data, mountPath: /var/lib/redpanda/data }
+            # Redpanda writes its effective configuration here at start-up.
+            - { name: config, mountPath: /etc/redpanda }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: config
+          emptyDir: { medium: Memory, sizeLimit: 8Mi }
+        - name: tmp
+          emptyDir: { medium: Memory, sizeLimit: 32Mi }
   volumeClaimTemplates:
     - metadata: { name: data }
       spec:
