@@ -48,9 +48,9 @@ class SLO:
 
 def freshness(stage: str, seconds: float) -> tuple[str, str]:
     count = f'sum(rate(pitwall_event_freshness_seconds_count{{stage="{stage}"}}[$W]))'
-    fresh = (
-        f'sum(rate(pitwall_event_freshness_seconds_bucket{{stage="{stage}",le="{seconds:g}"}}[$W]))'
-    )
+    # Clients write the bound as "1.0" or "1"; match either.
+    le = "|".join(sorted({f"{seconds:g}", str(float(seconds))}))
+    fresh = f'sum(rate(pitwall_event_freshness_seconds_bucket{{stage="{stage}",le=~"{le}"}}[$W]))'
     return f"({count} - {fresh})", count
 
 
@@ -64,7 +64,7 @@ SLOS = (
     SLO(
         "board-freshness",
         0.99,
-        "99% of timing events are on a published timing board within 1 s",
+        "99% of timing-board updates go out within 1 s of the oldest event in them",
         *freshness("timing", 1.0),
     ),
     SLO(
@@ -93,7 +93,9 @@ def slo_rules(slo: SLO) -> dict:
     records = [
         {
             "record": f"pitwall:slo_error_ratio:rate{w}",
-            "expr": f"({slo.errors.replace('$W', w)}) / ({slo.total.replace('$W', w)} > 0)",
+            # No errors at all means no error series: count that as zero, not as no data.
+            "expr": f"(({slo.errors.replace('$W', w)}) or vector(0))"
+            f" / ({slo.total.replace('$W', w)} > 0)",
             "labels": {"slo": slo.name},
         }
         for w in WINDOWS

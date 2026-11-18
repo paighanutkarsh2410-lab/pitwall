@@ -3,31 +3,31 @@ groups:
 - name: pitwall-slo-telemetry-freshness
   rules:
   - record: pitwall:slo_error_ratio:rate5m
-    expr: ((sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[5m])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="api",le="0.5"}[5m])))) / (sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[5m])) > 0)
+    expr: (((sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[5m])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="api",le=~"0.5"}[5m])))) or vector(0)) / (sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[5m])) > 0)
     labels:
       slo: telemetry-freshness
   - record: pitwall:slo_error_ratio:rate30m
-    expr: ((sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[30m])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="api",le="0.5"}[30m])))) / (sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[30m])) > 0)
+    expr: (((sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[30m])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="api",le=~"0.5"}[30m])))) or vector(0)) / (sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[30m])) > 0)
     labels:
       slo: telemetry-freshness
   - record: pitwall:slo_error_ratio:rate1h
-    expr: ((sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[1h])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="api",le="0.5"}[1h])))) / (sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[1h])) > 0)
+    expr: (((sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[1h])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="api",le=~"0.5"}[1h])))) or vector(0)) / (sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[1h])) > 0)
     labels:
       slo: telemetry-freshness
   - record: pitwall:slo_error_ratio:rate2h
-    expr: ((sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[2h])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="api",le="0.5"}[2h])))) / (sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[2h])) > 0)
+    expr: (((sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[2h])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="api",le=~"0.5"}[2h])))) or vector(0)) / (sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[2h])) > 0)
     labels:
       slo: telemetry-freshness
   - record: pitwall:slo_error_ratio:rate6h
-    expr: ((sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[6h])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="api",le="0.5"}[6h])))) / (sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[6h])) > 0)
+    expr: (((sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[6h])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="api",le=~"0.5"}[6h])))) or vector(0)) / (sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[6h])) > 0)
     labels:
       slo: telemetry-freshness
   - record: pitwall:slo_error_ratio:rate1d
-    expr: ((sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[1d])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="api",le="0.5"}[1d])))) / (sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[1d])) > 0)
+    expr: (((sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[1d])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="api",le=~"0.5"}[1d])))) or vector(0)) / (sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[1d])) > 0)
     labels:
       slo: telemetry-freshness
   - record: pitwall:slo_error_ratio:rate3d
-    expr: ((sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[3d])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="api",le="0.5"}[3d])))) / (sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[3d])) > 0)
+    expr: (((sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[3d])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="api",le=~"0.5"}[3d])))) or vector(0)) / (sum(rate(pitwall_event_freshness_seconds_count{stage="api"}[3d])) > 0)
     labels:
       slo: telemetry-freshness
   - record: pitwall:slo_objective
@@ -59,31 +59,31 @@ groups:
 - name: pitwall-slo-board-freshness
   rules:
   - record: pitwall:slo_error_ratio:rate5m
-    expr: ((sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[5m])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="timing",le="1"}[5m])))) / (sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[5m])) > 0)
+    expr: (((sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[5m])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="timing",le=~"1|1.0"}[5m])))) or vector(0)) / (sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[5m])) > 0)
     labels:
       slo: board-freshness
   - record: pitwall:slo_error_ratio:rate30m
-    expr: ((sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[30m])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="timing",le="1"}[30m])))) / (sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[30m])) > 0)
+    expr: (((sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[30m])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="timing",le=~"1|1.0"}[30m])))) or vector(0)) / (sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[30m])) > 0)
     labels:
       slo: board-freshness
   - record: pitwall:slo_error_ratio:rate1h
-    expr: ((sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[1h])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="timing",le="1"}[1h])))) / (sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[1h])) > 0)
+    expr: (((sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[1h])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="timing",le=~"1|1.0"}[1h])))) or vector(0)) / (sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[1h])) > 0)
     labels:
       slo: board-freshness
   - record: pitwall:slo_error_ratio:rate2h
-    expr: ((sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[2h])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="timing",le="1"}[2h])))) / (sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[2h])) > 0)
+    expr: (((sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[2h])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="timing",le=~"1|1.0"}[2h])))) or vector(0)) / (sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[2h])) > 0)
     labels:
       slo: board-freshness
   - record: pitwall:slo_error_ratio:rate6h
-    expr: ((sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[6h])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="timing",le="1"}[6h])))) / (sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[6h])) > 0)
+    expr: (((sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[6h])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="timing",le=~"1|1.0"}[6h])))) or vector(0)) / (sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[6h])) > 0)
     labels:
       slo: board-freshness
   - record: pitwall:slo_error_ratio:rate1d
-    expr: ((sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[1d])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="timing",le="1"}[1d])))) / (sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[1d])) > 0)
+    expr: (((sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[1d])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="timing",le=~"1|1.0"}[1d])))) or vector(0)) / (sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[1d])) > 0)
     labels:
       slo: board-freshness
   - record: pitwall:slo_error_ratio:rate3d
-    expr: ((sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[3d])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="timing",le="1"}[3d])))) / (sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[3d])) > 0)
+    expr: (((sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[3d])) - sum(rate(pitwall_event_freshness_seconds_bucket{stage="timing",le=~"1|1.0"}[3d])))) or vector(0)) / (sum(rate(pitwall_event_freshness_seconds_count{stage="timing"}[3d])) > 0)
     labels:
       slo: board-freshness
   - record: pitwall:slo_objective
@@ -101,7 +101,7 @@ groups:
       slo: board-freshness
     annotations:
       summary: 'board-freshness: error budget burning too fast (page)'
-      description: 'SLO: 99% of timing events are on a published timing board within 1 s. Objective 99.0%.'
+      description: 'SLO: 99% of timing-board updates go out within 1 s of the oldest event in them. Objective 99.0%.'
       runbook_url: https://github.com/paighanutkarsh2410-lab/pitwall/blob/main/docs/runbooks/board-freshness.md
   - alert: PitwallBoardFreshnessBudgetTicket
     expr: (pitwall:slo_error_ratio:rate1d{slo="board-freshness"} > 0.03 and pitwall:slo_error_ratio:rate2h{slo="board-freshness"} > 0.03) or (pitwall:slo_error_ratio:rate3d{slo="board-freshness"} > 0.01 and pitwall:slo_error_ratio:rate6h{slo="board-freshness"} > 0.01)
@@ -110,36 +110,36 @@ groups:
       slo: board-freshness
     annotations:
       summary: 'board-freshness: error budget burning too fast (ticket)'
-      description: 'SLO: 99% of timing events are on a published timing board within 1 s. Objective 99.0%.'
+      description: 'SLO: 99% of timing-board updates go out within 1 s of the oldest event in them. Objective 99.0%.'
       runbook_url: https://github.com/paighanutkarsh2410-lab/pitwall/blob/main/docs/runbooks/board-freshness.md
 - name: pitwall-slo-ingest-validity
   rules:
   - record: pitwall:slo_error_ratio:rate5m
-    expr: (sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered"}[5m]))) / (sum(rate(pitwall_events_total{service="ingest"}[5m])) > 0)
+    expr: ((sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered"}[5m]))) or vector(0)) / (sum(rate(pitwall_events_total{service="ingest"}[5m])) > 0)
     labels:
       slo: ingest-validity
   - record: pitwall:slo_error_ratio:rate30m
-    expr: (sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered"}[30m]))) / (sum(rate(pitwall_events_total{service="ingest"}[30m])) > 0)
+    expr: ((sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered"}[30m]))) or vector(0)) / (sum(rate(pitwall_events_total{service="ingest"}[30m])) > 0)
     labels:
       slo: ingest-validity
   - record: pitwall:slo_error_ratio:rate1h
-    expr: (sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered"}[1h]))) / (sum(rate(pitwall_events_total{service="ingest"}[1h])) > 0)
+    expr: ((sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered"}[1h]))) or vector(0)) / (sum(rate(pitwall_events_total{service="ingest"}[1h])) > 0)
     labels:
       slo: ingest-validity
   - record: pitwall:slo_error_ratio:rate2h
-    expr: (sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered"}[2h]))) / (sum(rate(pitwall_events_total{service="ingest"}[2h])) > 0)
+    expr: ((sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered"}[2h]))) or vector(0)) / (sum(rate(pitwall_events_total{service="ingest"}[2h])) > 0)
     labels:
       slo: ingest-validity
   - record: pitwall:slo_error_ratio:rate6h
-    expr: (sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered"}[6h]))) / (sum(rate(pitwall_events_total{service="ingest"}[6h])) > 0)
+    expr: ((sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered"}[6h]))) or vector(0)) / (sum(rate(pitwall_events_total{service="ingest"}[6h])) > 0)
     labels:
       slo: ingest-validity
   - record: pitwall:slo_error_ratio:rate1d
-    expr: (sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered"}[1d]))) / (sum(rate(pitwall_events_total{service="ingest"}[1d])) > 0)
+    expr: ((sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered"}[1d]))) or vector(0)) / (sum(rate(pitwall_events_total{service="ingest"}[1d])) > 0)
     labels:
       slo: ingest-validity
   - record: pitwall:slo_error_ratio:rate3d
-    expr: (sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered"}[3d]))) / (sum(rate(pitwall_events_total{service="ingest"}[3d])) > 0)
+    expr: ((sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered"}[3d]))) or vector(0)) / (sum(rate(pitwall_events_total{service="ingest"}[3d])) > 0)
     labels:
       slo: ingest-validity
   - record: pitwall:slo_objective
@@ -171,31 +171,31 @@ groups:
 - name: pitwall-slo-api-availability
   rules:
   - record: pitwall:slo_error_ratio:rate5m
-    expr: (sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[5m]))) / (sum(rate(pitwall_http_requests_total{service="api"}[5m])) > 0)
+    expr: ((sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[5m]))) or vector(0)) / (sum(rate(pitwall_http_requests_total{service="api"}[5m])) > 0)
     labels:
       slo: api-availability
   - record: pitwall:slo_error_ratio:rate30m
-    expr: (sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[30m]))) / (sum(rate(pitwall_http_requests_total{service="api"}[30m])) > 0)
+    expr: ((sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[30m]))) or vector(0)) / (sum(rate(pitwall_http_requests_total{service="api"}[30m])) > 0)
     labels:
       slo: api-availability
   - record: pitwall:slo_error_ratio:rate1h
-    expr: (sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[1h]))) / (sum(rate(pitwall_http_requests_total{service="api"}[1h])) > 0)
+    expr: ((sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[1h]))) or vector(0)) / (sum(rate(pitwall_http_requests_total{service="api"}[1h])) > 0)
     labels:
       slo: api-availability
   - record: pitwall:slo_error_ratio:rate2h
-    expr: (sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[2h]))) / (sum(rate(pitwall_http_requests_total{service="api"}[2h])) > 0)
+    expr: ((sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[2h]))) or vector(0)) / (sum(rate(pitwall_http_requests_total{service="api"}[2h])) > 0)
     labels:
       slo: api-availability
   - record: pitwall:slo_error_ratio:rate6h
-    expr: (sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[6h]))) / (sum(rate(pitwall_http_requests_total{service="api"}[6h])) > 0)
+    expr: ((sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[6h]))) or vector(0)) / (sum(rate(pitwall_http_requests_total{service="api"}[6h])) > 0)
     labels:
       slo: api-availability
   - record: pitwall:slo_error_ratio:rate1d
-    expr: (sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[1d]))) / (sum(rate(pitwall_http_requests_total{service="api"}[1d])) > 0)
+    expr: ((sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[1d]))) or vector(0)) / (sum(rate(pitwall_http_requests_total{service="api"}[1d])) > 0)
     labels:
       slo: api-availability
   - record: pitwall:slo_error_ratio:rate3d
-    expr: (sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[3d]))) / (sum(rate(pitwall_http_requests_total{service="api"}[3d])) > 0)
+    expr: ((sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[3d]))) or vector(0)) / (sum(rate(pitwall_http_requests_total{service="api"}[3d])) > 0)
     labels:
       slo: api-availability
   - record: pitwall:slo_objective

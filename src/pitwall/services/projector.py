@@ -47,6 +47,9 @@ async def project(
     log.info("%s: %s", group, health.detail)
     dirty, last_sent, last_lag = False, 0.0, 0.0
     oldest: int | None = None  # send time of the oldest event not yet in a published snapshot
+    # Rebuilding from the log replays history; only events sent since we started are "live" and
+    # count towards freshness.
+    started = observe.now_ms()
     faults = faults_of(group)
     try:
         while True:
@@ -63,7 +66,8 @@ async def project(
                         health.count("events")
                         observe.EVENTS.labels(group, event["type"], "applied").inc()
                         sent = observe.sent_of(message.headers)
-                        if sent is not None and (oldest is None or sent < oldest):
+                        live = sent is not None and sent >= started
+                        if live and (oldest is None or sent < oldest):
                             oldest = sent
                     else:
                         health.count("stale")

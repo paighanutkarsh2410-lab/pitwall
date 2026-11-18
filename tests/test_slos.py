@@ -36,7 +36,10 @@ def test_page_alerts_use_the_sre_workbook_burn_rates():
 
 def test_freshness_counts_late_events_as_errors():
     ratio = rules()["pitwall:slo_error_ratio:rate5m/telemetry-freshness"]["expr"]
-    assert 'le="0.5"' in ratio and 'stage="api"' in ratio and "[5m]" in ratio
+    assert 'le=~"0.5"' in ratio and 'stage="api"' in ratio and "[5m]" in ratio
+    board = rules()["pitwall:slo_error_ratio:rate5m/board-freshness"]["expr"]
+    assert 'le=~"1|1.0"' in board  # the Python client writes "1.0"
+    assert "or vector(0)" in ratio  # no errors yet still means a ratio of 0
     assert ratio.endswith("> 0)")  # no division by zero when nothing is flowing
     assert "$W" not in slos.render() and "{w}" not in slos.render()
 

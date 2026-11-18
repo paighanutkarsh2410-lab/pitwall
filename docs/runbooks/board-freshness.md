@@ -1,7 +1,8 @@
 # Board freshness
 
-**SLO:** 99% of timing events (laps, positions, gaps, pit stops, tyres) are on a published timing
-board within 1 s of being sent.
+**SLO:** 99% of timing-board updates go out within 1 s of the oldest event in them (laps,
+positions, gaps, pit stops, tyres), measured from the moment the replayer sent that event. Events
+replayed from the log after a restart don't count: that is catching up, not lateness.
 
 **What it means.** The timing screen, gaps and the box-this-lap projection are stale. Strategy
 calls would be made on old gaps: the most expensive kind of stale data on a pit wall.
