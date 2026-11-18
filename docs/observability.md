@@ -66,7 +66,10 @@ local environment only and refused through the ingress):
 - `PitwallTelemetryFreshnessBudgetPage` and `…Ticket` fired within a minute and reached
   Alertmanager with their runbook links;
 - with the delay removed, p99 was back to 0.05 s at once and the 5-minute error ratio fell from
-  0.25 to 0.08 over four minutes; the page cleared as the drill's errors left the 30-minute window.
+  0.25 to 0.08 over four minutes; the page cleared about 11 minutes after the fix, as the drill's
+  errors left the 30-minute window;
+- the two ticket alerts stayed open, as tickets should: their 6-hour window still holds the
+  drill's errors, so they close within six hours. A slow burn is a ticket, not a page.
 
 Why within a minute and not the textbook nine: Prometheus had been running for about 40 minutes,
 so its "6-hour" window held only those 40 minutes and the 6x path tripped almost at once. On a

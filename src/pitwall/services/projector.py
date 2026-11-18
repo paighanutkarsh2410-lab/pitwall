@@ -59,14 +59,17 @@ async def project(
             for messages in batches.values():
                 for message in messages:
                     event = bus.decode(message.value)
-                    with tracing.span_from(message.headers, f"{group}.apply", event):
+                    sent = observe.sent_of(message.headers)
+                    live = sent is not None and sent >= started
+                    # Trace live events only: re-reading the log after a restart would trace
+                    # the same event again on every restart.
+                    headers = message.headers if live else None
+                    with tracing.span_from(headers, f"{group}.apply", event):
                         applied = model.apply(event, bus.run_of(message.headers))
                     if applied:
                         dirty = True
                         health.count("events")
                         observe.EVENTS.labels(group, event["type"], "applied").inc()
-                        sent = observe.sent_of(message.headers)
-                        live = sent is not None and sent >= started
                         if live and (oldest is None or sent < oldest):
                             oldest = sent
                     else:

@@ -3,7 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
+    # A docs-only change needs no new image and no redeploy.
+    paths-ignore: ["docs/**", "**/*.md"]
   pull_request:
+    paths-ignore: ["docs/**", "**/*.md"]
 
 permissions:
   contents: read
