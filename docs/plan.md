@@ -41,7 +41,7 @@ automatically; then the trackside link is cut for 60 seconds and not one data po
 
 *Done when* a replayed race is live on the pit-wall screen, deployed by Argo CD.
 
-## Phase 2: Observability and SLOs
+## Phase 2: Observability and SLOs ✅
 
 - OpenTelemetry tracing carried through every Kafka hop (one data point, car to screen)
 - Prometheus, Loki, Tempo and Grafana
