@@ -89,6 +89,11 @@ def test_every_service_exports_metrics_and_guards_its_fault_switch(monkeypatch):
         assert 'pitwall_fault_delay_seconds{service="drill"} 0.5' in metrics
         assert "pitwall_event_freshness_seconds_bucket" in metrics
         client.post("/faults", json={"delay_ms": 0})
+        # Through the ingress (Traefik adds X-Forwarded-For), neither is reachable.
+        outside = {"X-Forwarded-For": "203.0.113.9"}
+        assert client.get("/metrics/", headers=outside).status_code == 404
+        assert client.post("/faults", json={"delay_ms": 1}, headers=outside).status_code == 404
+        assert client.get("/healthz", headers=outside).status_code == 200
 
 
 def test_tracing_stays_off_without_a_collector(monkeypatch):

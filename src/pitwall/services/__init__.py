@@ -27,11 +27,13 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
 
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from pitwall import observe, tracing
 
 SERVICES = ("ingest", "timing", "strategy", "api", "replayer")
+INTERNAL = ("/metrics", "/faults")  # never served to requests that came through the ingress
 
 log = logging.getLogger("pitwall")
 
@@ -151,6 +153,10 @@ def service_app(name: str, worker: Worker, app: FastAPI | None = None) -> FastAP
 
     @app.middleware("http")
     async def measure(request: Request, call_next):
+        # Metrics and the drill switch are for inside the cluster (Prometheus scrapes pods
+        # directly). Anything that came through the ingress carries X-Forwarded-For.
+        if request.url.path.startswith(INTERNAL) and "x-forwarded-for" in request.headers:
+            return JSONResponse({"detail": "Not available through the ingress"}, status_code=404)
         started = time.perf_counter()
         response = await call_next(request)
         route = request.scope.get("route")
