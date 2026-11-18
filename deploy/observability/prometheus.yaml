@@ -48,3 +48,13 @@ prometheus-node-exporter:
   enabled: false
 prometheus-pushgateway:
   enabled: false
+# Reload Prometheus when Pitwall's rules change, not only its own config: the reloader watches
+# /etc/config by default and would miss a new rules file.
+configmapReload:
+  prometheus:
+    extraVolumeDirs: [/etc/pitwall-rules]
+    extraConfigmapMounts:
+      - name: pitwall-rules
+        mountPath: /etc/pitwall-rules
+        configMap: pitwall-rules
+        readOnly: true
