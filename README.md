@@ -68,7 +68,7 @@ Races are stored in `~/.pitwall/races` (`PITWALL_HOME` moves them). The replayer
 container image:
 
 ```bash
-docker run --rm -v ~/.pitwall:/data ghcr.io/paighanutkarsh2410-lab/pitwall/replayer:main replay 2024-sao-paulo --speed 10
+docker run --rm -v ~/.pitwall:/data ghcr.io/paighanutkarsh2410-lab/pitwall-replayer:main replay 2024-sao-paulo --speed 10
 ```
 
 ## The event format

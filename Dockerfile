@@ -1,6 +1,9 @@
 # The replayer: streams a downloaded race as events. Races live in /data (mount a volume).
 FROM python:3.12-slim
 
+LABEL org.opencontainers.image.source="https://github.com/paighanutkarsh2410-lab/pitwall" \
+      org.opencontainers.image.description="Pitwall replayer: real races as a live event stream"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
