@@ -4,6 +4,13 @@ image:
   pullPolicy: IfNotPresent
 
 brokers: redpanda:9092
+
+observability:
+  # Traces go to the OpenTelemetry Collector on the same node; empty turns tracing off.
+  otlpEndpoint: ""
+
+# The /faults endpoint for drills (docs/runbooks). Off unless an environment turns it on.
+faults: false
 # Secret with PITWALL_DB_URL (created by scripts/cluster-up.sh; never in Git).
 dbSecret: pitwall-db
 

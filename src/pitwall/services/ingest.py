@@ -8,12 +8,13 @@ never stops the race for everyone else.
 from __future__ import annotations
 
 import logging
+import time
 
 from pydantic import ValidationError
 
-from pitwall import bus, history
+from pitwall import bus, history, observe, tracing
 from pitwall.events import validate
-from pitwall.services import Health, service_app
+from pitwall.services import Health, faults_of, service_app
 
 log = logging.getLogger("pitwall.ingest")
 
@@ -43,24 +44,45 @@ async def work(health: Health) -> None:
     await producer.start()
     health.ready, health.detail = True, "consuming pitwall.raw"
     log.info("ingest is consuming %s (history: %s)", bus.RAW, "on" if recorder else "off")
+    faults = faults_of("ingest")
+    last_lag = 0.0
     try:
         while True:
             batches = await consumer.getmany(timeout_ms=250, max_records=2000)
+            if batches:
+                await faults.pause()
             for messages in batches.values():
                 for message in messages:
+                    observe.observe_freshness("ingest", message.headers)
                     event = bus.decode(message.value)
-                    topic, value = triage(event)
-                    await producer.send(
-                        topic, bus.encode(value), key=message.key, headers=list(message.headers)
-                    )
+                    headers = list(message.headers)
+                    with tracing.span_from(headers, "ingest.route", event) as span:
+                        topic, value = triage(event)
+                        if span is not None:
+                            span.set_attribute("pitwall.topic", topic)
+                            headers = tracing.inject(headers)
+                        await producer.send(
+                            topic, bus.encode(value), key=message.key, headers=headers
+                        )
                     health.count("events")
                     if topic == bus.DEADLETTER:
                         health.count("deadlettered")
+                        kind = str(event.get("type"))
+                        observe.EVENTS.labels("ingest", kind, "deadlettered").inc()
                         log.warning("Dead-lettered seq %s: %s", event.get("seq"), value["reason"])
-                    elif recorder:
-                        recorder.add(bus.run_of(message.headers) or "unknown", event)
+                    else:
+                        observe.EVENTS.labels("ingest", event["type"], "routed").inc()
+                        if recorder:
+                            recorder.add(bus.run_of(message.headers) or "unknown", event)
             if recorder and recorder.due():
-                health.count("recorded", await recorder.flush())
+                with observe.HISTORY_WRITE.time():
+                    written = await recorder.flush()
+                observe.HISTORY_ROWS.inc(written)
+                health.count("recorded", written)
+            if time.monotonic() - last_lag > 2:
+                for topic, lag in (await bus.lag_by_topic(consumer)).items():
+                    observe.CONSUMER_LAG.labels("ingest", topic).set(lag)
+                last_lag = time.monotonic()
     finally:
         await consumer.stop()
         await producer.stop()

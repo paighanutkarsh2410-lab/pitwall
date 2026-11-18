@@ -7,6 +7,9 @@ races:
   hostPath: /pitwall-data  # the laptop's ~/.pitwall, mounted into the kind node
 logos:
   hostPath: /pitwall-logos  # the laptop's assets/private/
+observability:
+  otlpEndpoint: http://otel-collector-opentelemetry-collector.observability:4318
+faults: true  # drills: inject delays to rehearse the runbooks
 ingress:
   hosts: [pitwall.localtest.me, localhost]
 replayer:

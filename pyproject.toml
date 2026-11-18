@@ -9,6 +9,10 @@ dependencies = [
   "asyncpg==0.32.0",
   "fastapi==0.162.0",
   "httpx==0.28.1",
+  "opentelemetry-api==1.45.2",
+  "opentelemetry-exporter-otlp-proto-http==1.45.2",
+  "opentelemetry-sdk==1.45.2",
+  "prometheus-client==0.26.0",
   "pydantic==2.14.2",
   "uvicorn==0.54.0",
   "websockets==17.4",
@@ -17,6 +21,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest==9.2.0",
+  "pyyaml==6.0.3",
   "ruff==0.17.3",
 ]
 
@@ -39,3 +44,7 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff.lint.per-file-ignores]
+# PromQL queries read better whole than wrapped.
+"scripts/dashboards.py" = ["E501"]

@@ -1,0 +1,41 @@
+# One OpenTelemetry Collector per node: it receives the services' traces over OTLP and reads every
+# pod's log from the node, then sends traces to Tempo and Pitwall's logs to Loki.
+mode: daemonset
+image:
+  repository: otel/opentelemetry-collector-contrib
+presets:
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+  kubernetesAttributes:
+    enabled: true
+service:
+  enabled: true
+  internalTrafficPolicy: Local
+resources:
+  requests: { cpu: 50m, memory: 96Mi }
+  limits: { memory: 256Mi }
+config:
+  exporters:
+    otlp/tempo:
+      endpoint: tempo.observability.svc:4317
+      tls: { insecure: true }
+    otlphttp/loki:
+      endpoint: http://loki.observability.svc:3100/otlp
+  processors:
+    # Only Pitwall's own logs: the platform's would be noise on a laptop.
+    filter/pitwall:
+      logs:
+        log_record:
+          - 'resource.attributes["k8s.namespace.name"] != "pitwall"'
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [otlp/tempo]
+      logs:
+        receivers: [filelog]
+        processors: [memory_limiter, k8sattributes, filter/pitwall, batch]
+        exporters: [otlphttp/loki]
+      metrics: null

@@ -1,0 +1,67 @@
+# grafana-community/grafana: dashboards over Prometheus, Loki and Tempo, linked together.
+admin:
+  existingSecret: grafana-admin # created by scripts/cluster-up.sh; no password in Git
+  userKey: admin-user
+  passwordKey: admin-password
+grafana.ini:
+  auth.anonymous:
+    enabled: true
+    org_role: Viewer # look without logging in; change things as admin
+  analytics:
+    reporting_enabled: false
+    check_for_updates: false
+  dashboards:
+    default_home_dashboard_path: /tmp/dashboards/Pitwall/race-health.json
+resources:
+  requests: { cpu: 50m, memory: 128Mi }
+  limits: { memory: 384Mi }
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  hosts: [grafana.pitwall.localtest.me]
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    searchNamespace: ALL
+    folderAnnotation: grafana_folder
+    provider:
+      foldersFromFilesStructure: true
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        url: http://prometheus-server.observability.svc
+        isDefault: true
+      - name: Loki
+        uid: loki
+        type: loki
+        url: http://loki.observability.svc:3100
+        jsonData:
+          # A log line's trace id opens that trace in Tempo.
+          derivedFields:
+            - name: trace
+              matcherRegex: '"trace_id":"(\w+)"'
+              datasourceUid: tempo
+              url: "$${__value.raw}"
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        url: http://tempo.observability.svc:3200
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            filterByTraceID: true
+            spanStartTimeShift: -1m
+            spanEndTimeShift: 1m
+          nodeGraph:
+            enabled: true
+      - name: Alertmanager
+        uid: alertmanager
+        type: alertmanager
+        url: http://prometheus-alertmanager.observability.svc:9093
+        jsonData:
+          implementation: prometheus

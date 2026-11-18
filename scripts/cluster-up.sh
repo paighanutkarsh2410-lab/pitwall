@@ -70,6 +70,15 @@ else
   echo "Keeping the existing pitwall-db Secret."
 fi
 
+step "Grafana credentials"
+kubectl create namespace observability --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+if ! kubectl -n observability get secret grafana-admin >/dev/null 2>&1; then
+  kubectl -n observability create secret generic grafana-admin     --from-literal=admin-user=admin --from-literal=admin-password="$(openssl rand -hex 16)" >/dev/null
+  echo "Created a random Grafana admin password in the grafana-admin Secret."
+else
+  echo "Keeping the existing grafana-admin Secret."
+fi
+
 if [ "$GITOPS" = 0 ]; then
   echo; echo "Stopping before Argo CD (--no-gitops). Install the charts in deploy/charts by hand."
   exit 0
@@ -102,6 +111,10 @@ kubectl -n pitwall get pods
 
 cat <<DONE
 
-Pitwall:  http://pitwall.localtest.me:$HTTP_PORT
-Argo CD:  http://argocd.pitwall.localtest.me:$HTTP_PORT  (admin; password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)
+Pitwall:     http://localhost:$HTTP_PORT  (or http://pitwall.localtest.me:$HTTP_PORT)
+Grafana:     http://grafana.pitwall.localtest.me:$HTTP_PORT  (Pitwall · Race health)
+Prometheus:  http://prometheus.pitwall.localtest.me:$HTTP_PORT
+Argo CD:     http://argocd.pitwall.localtest.me:$HTTP_PORT
+Passwords:   kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+             kubectl -n observability get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
 DONE

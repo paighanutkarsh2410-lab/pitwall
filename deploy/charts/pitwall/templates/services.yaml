@@ -31,6 +31,10 @@ spec:
       labels:
         app.kubernetes.io/name: {{ $name }}
         {{- include "pitwall.labels" $ | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /metrics/
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -47,6 +51,12 @@ spec:
           env:
             - { name: PORT, value: "8080" }
             - { name: PITWALL_BROKERS, value: {{ $.Values.brokers | quote }} }
+            - { name: PITWALL_SERVICE, value: {{ $name }} }
+            - { name: PITWALL_LOG_FORMAT, value: json }
+            - { name: PITWALL_FAULTS, value: {{ $.Values.faults | quote }} }
+            {{- with $.Values.observability.otlpEndpoint }}
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: {{ . | quote }} }
+            {{- end }}
             {{- if $svc.db }}
             - name: PITWALL_DB_URL
               valueFrom:

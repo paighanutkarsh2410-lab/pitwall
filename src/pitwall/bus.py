@@ -141,6 +141,18 @@ def consumer(*topics: str, group: str | None, **options):
     )
 
 
+async def lag_by_topic(consumer) -> dict[str, int]:
+    """Messages not yet consumed, per topic, across this consumer's partitions."""
+    lag: dict[str, int] = {}
+    for tp in consumer.assignment():
+        end = consumer.highwater(tp)
+        if end is None:
+            continue
+        position = await consumer.position(tp)
+        lag[tp.topic] = lag.get(tp.topic, 0) + max(0, end - position)
+    return lag
+
+
 async def ensure_topics() -> list[str]:
     """Creates any missing topics. Safe to run from every service at start-up."""
     from aiokafka.admin import AIOKafkaAdminClient, NewTopic

@@ -1,0 +1,11 @@
+# Prometheus loads every file in this ConfigMap (mounted at /etc/pitwall-rules).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pitwall-rules
+  labels: { app.kubernetes.io/part-of: pitwall }
+data:
+{{- range $path, $_ := .Files.Glob "rules/*.yaml" }}
+  {{ base $path }}: |-
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}

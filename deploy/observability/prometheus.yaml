@@ -1,0 +1,50 @@
+# prometheus-community/prometheus: metrics, alert rules and Alertmanager, sized for a laptop.
+server:
+  retention: 3d
+  persistentVolume:
+    size: 4Gi
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 768Mi }
+  global:
+    scrape_interval: 15s
+    evaluation_interval: 15s
+  # Pitwall's generated SLO rules and alerts (the pitwall-observability chart).
+  extraConfigmapMounts:
+    - name: pitwall-rules
+      mountPath: /etc/pitwall-rules
+      configMap: pitwall-rules
+      readOnly: true
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts: [prometheus.pitwall.localtest.me]
+serverFiles:
+  prometheus.yml:
+    rule_files:
+      - /etc/pitwall-rules/*.yaml
+alertmanager:
+  enabled: true
+  persistence:
+    enabled: false
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 96Mi }
+  config:
+    route:
+      receiver: pit-wall
+      group_by: [alertname, slo]
+      group_wait: 10s
+      repeat_interval: 4h
+    # No paging service on a laptop: alerts show in Alertmanager and Grafana.
+    receivers:
+      - name: pit-wall
+kube-state-metrics:
+  enabled: true
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+prometheus-node-exporter:
+  enabled: false
+prometheus-pushgateway:
+  enabled: false

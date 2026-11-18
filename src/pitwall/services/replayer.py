@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from pitwall import bus
+from pitwall import bus, observe, tracing
 from pitwall import race as races
 from pitwall.openf1 import OpenF1
 from pitwall.replay import Pace, Stats, replay
@@ -193,12 +193,23 @@ class Replayer:
             log.info(
                 "Run %s: %s at %gx from lap %s", run.id, run.race, run.pace.speed, run.from_lap
             )
-            headers = [(bus.RUN_HEADER, run.id.encode())]
+            run_header = (bus.RUN_HEADER, run.id.encode())
+            observe.REPLAY_SPEED.set(run.pace.speed)
 
             async def emit(event: dict) -> None:
-                await self.producer.send(
-                    bus.RAW, bus.encode(event), key=bus.key(event), headers=headers
-                )
+                headers = [run_header, observe.sent_header()]
+                if tracing.should_trace(event):
+                    with tracing.root_span("replayer.send", event, run=run.id):
+                        headers = tracing.inject(headers)
+                        await self.producer.send(
+                            bus.RAW, bus.encode(event), key=bus.key(event), headers=headers
+                        )
+                else:
+                    await self.producer.send(
+                        bus.RAW, bus.encode(event), key=bus.key(event), headers=headers
+                    )
+                observe.EVENTS.labels("replayer", event["type"], "sent").inc()
+                observe.REPLAY_BEHIND.set(run.stats.behind_s)
 
             path = races.race_dir(summary["race_id"]) / "race.jsonl.gz"
             await replay(
@@ -210,6 +221,7 @@ class Replayer:
                 catch_up=True,
             )
             await self.producer.flush()
+            observe.REPLAY_SPEED.set(0)
             run.state = "finished"
             log.info("Run %s finished: %s events", run.id, run.stats.sent)
             if self.loop:
@@ -307,6 +319,7 @@ async def change(request: Change) -> dict:
     if run is None or run.state not in {"playing", "downloading", "starting"}:
         raise HTTPException(409, "Nothing is playing")
     run.pace.speed = request.speed
+    observe.REPLAY_SPEED.set(request.speed)
     return run.view()
 
 

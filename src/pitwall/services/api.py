@@ -18,15 +18,16 @@ import json
 import logging
 import os
 import re
+import time
 from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse, Response
 
-from pitwall import bus, history
+from pitwall import bus, history, observe, tracing
 from pitwall.live import Live
-from pitwall.services import Health, service_app
+from pitwall.services import Health, faults_of, service_app
 
 log = logging.getLogger("pitwall.api")
 
@@ -60,12 +61,25 @@ async def follow(health: Health) -> None:
             health.count("snapshots")
 
     async def pump_cars() -> None:
+        faults = faults_of("api")
+        last_lag = 0.0
         while True:
             batches = await cars.getmany(timeout_ms=200, max_records=5000)
+            if batches:
+                await faults.pause()
             for messages in batches.values():
                 for message in messages:
-                    live.on_car(bus.decode(message.value), bus.run_of(message.headers))
+                    event = bus.decode(message.value)
+                    with tracing.span_from(message.headers, "api.receive", event):
+                        accepted = live.on_car(event, bus.run_of(message.headers))
+                    if accepted:
+                        observe.observe_freshness("api", message.headers)
+                        observe.EVENTS.labels("api", event["type"], "received").inc()
                     health.count("car_events")
+            if time.monotonic() - last_lag > 2:
+                for topic, lag in (await bus.lag_by_topic(cars)).items():
+                    observe.CONSUMER_LAG.labels("api", topic).set(lag)
+                last_lag = time.monotonic()
 
     try:
         await asyncio.gather(pump_snapshots(), pump_cars())
@@ -94,6 +108,7 @@ async def get_state() -> dict:
 @api.websocket("/ws")
 async def stream(socket: WebSocket) -> None:
     await socket.accept()
+    observe.WEBSOCKETS.inc()
     # Up to two cars' telemetry (a team's pair), each with the last sample sent.
     watch: dict[int, int | None] = {}
     sent = {"board": -1, "strategy": -1, "positions": -1, "track": None}
@@ -130,6 +145,7 @@ async def stream(socket: WebSocket) -> None:
                 frame["telemetry"] = telemetry
             if frame:
                 await socket.send_text(json.dumps(frame, separators=(",", ":")))
+                observe.FRAMES.inc()
             await asyncio.sleep(FRAME_EVERY)
 
     tasks = [asyncio.create_task(receive()), asyncio.create_task(send())]
@@ -138,6 +154,7 @@ async def stream(socket: WebSocket) -> None:
     except WebSocketDisconnect:
         pass
     finally:
+        observe.WEBSOCKETS.dec()
         for task in tasks:
             task.cancel()
 
