@@ -57,6 +57,8 @@ export function useLive(watch: number[]): Live {
             if (s.board && frame.board.run !== s.board.run) {
               next.samples = {};
               next.positions = {};
+              // A different race has a different circuit; its outline arrives once traced.
+              if (frame.board.session?.race_id !== s.track?.race) next.track = null;
             }
             next.board = frame.board;
           }

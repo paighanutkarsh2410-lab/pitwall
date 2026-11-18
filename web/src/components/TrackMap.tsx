@@ -34,15 +34,17 @@ export function TrackMap({
   focus: number | null;
   onSelect: (car: number) => void;
 }) {
+  // Only this race's outline: another circuit's would put the cars off the track.
+  const outline = track && track.race === board.session?.race_id ? track : null;
   // Fit the outline into the square (y pointing up); until it's traced, fit the cars instead.
-  const outlineFit = useMemo(() => (track ? makeFit(track.points) : null), [track]);
+  const outlineFit = useMemo(() => (outline ? makeFit(outline.points) : null), [outline]);
   const fit = outlineFit ?? makeFit(Object.values(positions));
 
   const path = useMemo(() => {
-    if (!outlineFit || !track) return null;
-    const d = track.points.map(([x, y], i) => `${i ? "L" : "M"}${outlineFit(x, y).map((v) => v.toFixed(1)).join(" ")}`);
+    if (!outlineFit || !outline) return null;
+    const d = outline.points.map(([x, y], i) => `${i ? "L" : "M"}${outlineFit(x, y).map((v) => v.toFixed(1)).join(" ")}`);
     return `${d.join(" ")} Z`;
-  }, [outlineFit, track]);
+  }, [outlineFit, outline]);
 
   const ours = (carTeam: string) => team != null && carTeam === team;
   // Team cars and the focused car drawn last, on top of the field.
@@ -51,7 +53,7 @@ export function TrackMap({
     <section className="panel map" aria-label="Track map">
       <header className="panel-head">
         <h2>{board.session?.circuit ?? "Circuit"}</h2>
-        {!track && <span className="dim small">Tracing the circuit from the cars…</span>}
+        {!outline && <span className="dim small">Tracing the circuit from the cars…</span>}
       </header>
       <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label="Cars on the circuit">
         {path && (
