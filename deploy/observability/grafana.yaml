@@ -12,9 +12,11 @@ grafana.ini:
     check_for_updates: false
   dashboards:
     default_home_dashboard_path: /tmp/dashboards/Pitwall/race-health.json
+# Grafana 13 needs room: at 384Mi its garbage collector thrashed and burned 10+ CPU cores,
+# starving the race stream. The CPU limit keeps any repeat from taking over the node.
 resources:
-  requests: { cpu: 50m, memory: 128Mi }
-  limits: { memory: 384Mi }
+  requests: { cpu: 100m, memory: 256Mi }
+  limits: { cpu: "1", memory: 768Mi }
 ingress:
   enabled: true
   ingressClassName: traefik
