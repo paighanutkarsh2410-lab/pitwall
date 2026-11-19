@@ -4,6 +4,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import * as THREE from "three";
 import { type Car, type CarInfo, loadCar, loadCars, preload, silhouette } from "./car";
 import { Telemetry } from "./rev";
+import { tyreSmoke } from "./smoke";
 import { createStage } from "./stage";
 import { cssVars, THEMES, type Theme, themeFor } from "./theme";
 import "./style.css";
@@ -174,7 +175,10 @@ async function main() {
   // The car on stage, its telemetry, and where it is in the shot.
   let car: Car | null = null;
   let telemetry: Telemetry | null = null;
-  const shot = { x: 0, yaw: 0, launch: 0, roll: 0, entry: 0 };
+  // The launch, in phases the scroll plays: rev (blips on the grid), turn and creep (side-on,
+  // into the middle, the camera pulling back), burn (the burnout), launch (the squat) and roll
+  // (away across the page). Each runs 0 to 1.
+  const shot = { x: 0, yaw: 0, launch: 0, roll: 0, entry: 0, rev: 0, turn: 0, creep: 0, burn: 0 };
   const home = () => ({ x: isPhone() ? 0 : 2.85, yaw: THREE.MathUtils.degToRad(48) });
   Object.assign(shot, home());
 
@@ -386,7 +390,7 @@ async function main() {
       scrollTrigger: {
         trigger: hero,
         start: "top top",
-        end: "+=240%",
+        end: "+=300%",
         pin: true,
         scrub: 0.6,
         // A nudge is enough: the first bit of scroll either way plays the whole launch (or its
@@ -399,13 +403,21 @@ async function main() {
       },
     });
     launch
-      .to(shot, { launch: 1, duration: 0.18, ease: "power2.in" }, 0)
-      .to(".cue", { opacity: 0, y: 20, duration: 0.08, ease: "power1.in" }, 0)
-      .to(".hero__copy--race", { xPercent: -40, opacity: 0, duration: 0.22, ease: "power2.in" }, 0.08)
-      .to(".hero__ghost", { xPercent: -30, opacity: 0, duration: 0.3, ease: "power1.in" }, 0.1)
-      .to(shot, { yaw: 0, duration: 0.3, ease: "power2.inOut" }, 0.18)
-      .to(shot, { roll: 1, duration: 0.82, ease: "power2.in" }, 0.18)
-      .to(".rev", { opacity: 0, duration: 0.1 }, 0.9);
+      .to(".cue", { opacity: 0, y: 20, duration: 0.05, ease: "power1.in" }, 0)
+      .to(".hero__copy--race", { xPercent: -40, opacity: 0, duration: 0.14, ease: "power2.in" }, 0.02)
+      .to(".hero__ghost", { xPercent: -30, opacity: 0, duration: 0.2, ease: "power1.in" }, 0.03)
+      // A few hard revs where it stands.
+      .to(shot, { rev: 1, duration: 0.1, ease: "power1.in" }, 0)
+      // Side-on, into the middle; the camera pulls back to take in the whole car.
+      .to(shot, { turn: 1, duration: 0.16, ease: "power2.inOut" }, 0.1)
+      .to(shot, { creep: 1, duration: 0.18, ease: "power2.inOut" }, 0.1)
+      // The burnout: brakes on, rear wheels lit up, smoke.
+      .to(shot, { burn: 1, duration: 0.04, ease: "power2.out" }, 0.25)
+      .to(shot, { burn: 0, duration: 0.04, ease: "power1.in" }, 0.5)
+      // Brakes off: the squat, and away.
+      .to(shot, { launch: 1, duration: 0.06, ease: "power2.in" }, 0.5)
+      .to(shot, { roll: 1, duration: 0.48, ease: "power2.in" }, 0.52)
+      .to(".rev", { opacity: 0, duration: 0.06, ease: "none" }, 0.93);
   }
   // The carry: the page scrolls itself through the launch. While it runs, the wheel, touch and
   // keys are held so they can't fight it; it takes about as long as a real launch to the first
@@ -422,8 +434,10 @@ async function main() {
   function carry(to: number, direction: 1 | -1) {
     auto = gsap.to(window, {
       scrollTo: { y: to, autoKill: false },
-      duration: direction > 0 ? 2.6 : 1.8,
-      ease: direction > 0 ? "power1.inOut" : "power2.inOut",
+      // Forward at a steady rate, so each phase gets its share: about half a second of revs, a
+      // second turning in, a second and a bit of burnout, two seconds away.
+      duration: direction > 0 ? 4.6 : 2.2,
+      ease: direction > 0 ? "none" : "power2.inOut",
       onComplete: () => {
         // Let the scrub settle before listening again, so the tail of the carry isn't read as a new nudge.
         gsap.delayedCall(0.7, () => (auto = null));
@@ -440,7 +454,7 @@ async function main() {
     launch.scrollTrigger?.kill(true);
     launch.progress(0).kill();
     launch = null;
-    Object.assign(shot, { launch: 0, roll: 0 }, home());
+    Object.assign(shot, { launch: 0, roll: 0, rev: 0, turn: 0, creep: 0, burn: 0 }, home());
     auto?.kill();
     auto = null;
     gsap.set([".hero__copy--race", ".hero__ghost", ".rev", ".cue"], { clearProps: "transform,opacity" });
@@ -455,6 +469,9 @@ async function main() {
   const tailWorld = new THREE.Vector3();
   const idle = { t: 0, speed: 0, throttle: 0, gear: 1, rpm: 4000 };
   let distance = 0;
+  let spin = 0;
+  let gridClock = 0;
+  const smoke = tyreSmoke(stage.scene);
   let lastRpm = 0;
   let rock = 0;
   let lastX = 0;
@@ -466,14 +483,17 @@ async function main() {
     if (!visible || !car) return;
     timer.update();
     const t = timer.getElapsed();
+    const dt = Math.min(timer.getDelta(), 0.05);
     const base = home();
 
-    // Which telemetry moment we are in: the grid loop, or the launch (driven by scroll).
+    // Which telemetry moment we are in: the grid loop, or the launch (driven by scroll). Revving
+    // and the burnout play the driver's real grid revs, faster: the numbers stay real.
+    gridClock += dt * 1000 * (1 + shot.rev * 0.7 + shot.burn * 0.8);
     let sample = idle;
     if (telemetry) {
       if (shot.launch + shot.roll < 0.001) {
         const span = GRID_TO - GRID_FROM;
-        sample = telemetry.at(GRID_FROM + ((t * 1000) % span));
+        sample = telemetry.at(GRID_FROM + (gridClock % span));
       } else {
         sample = telemetry.at(Math.min(LAUNCH_TO, (shot.launch * 0.15 + shot.roll * 0.85) * LAUNCH_TO));
       }
@@ -484,7 +504,7 @@ async function main() {
     // its suspension each time the driver blips the throttle (engine torque twisting the car).
     // The wheels stay put. Reduced motion keeps everything still; so does a car still arriving.
     const settled = 1 - Math.min(1, Math.abs(shot.entry) / 2);
-    const shake = reduce ? 0 : rev * rev * (1 - shot.roll * 0.7) * settled;
+    const shake = reduce ? 0 : Math.min(1.6, rev * rev * (1 + shot.rev * 0.5 + shot.burn * 1.2)) * (1 - shot.roll * 0.7) * settled;
     const blip = Math.max(0, (sample.rpm - lastRpm) / 900); // how hard the revs are rising
     lastRpm = sample.rpm;
     rock += (Math.min(1, blip) - rock) * 0.18;
@@ -492,22 +512,37 @@ async function main() {
     car.body.position.y =
       Math.sin(t * 92) * 0.011 * shake + Math.sin(t * 37) * 0.006 * shake + torque * 0.018 - shot.launch * 0.035 * (1 - shot.roll);
     car.body.rotation.x = Math.sin(t * 61) * 0.006 * shake + torque * 0.012; // rolls towards one side, as a V6 does
-    car.body.rotation.z = Math.sin(t * 47) * 0.005 * shake + torque * 0.009 + shot.launch * 0.012 * (1 - shot.roll);
-    // The camera feels it too, faintly, at the top of the rev range.
-    const buzz = reduce ? 0 : Math.max(0, rev - 0.55) * (1 - shot.roll) * settled;
+    // The burnout sits the car down on its rear tyres; the launch squats it further.
+    car.body.rotation.z =
+      Math.sin(t * 47) * 0.005 * shake + torque * 0.009 + (shot.launch * 0.012 + shot.burn * 0.008) * (1 - shot.roll);
+    // The camera feels it too, faintly, at the top of the rev range, more in the burnout. On a
+    // desktop it pulls back as the car turns side-on, so the whole car and its smoke are in frame.
+    const buzz = reduce ? 0 : (Math.max(0, rev - 0.55) + shot.burn * 0.6) * (1 - shot.roll) * settled;
     stage.camera.position.y = (isPhone() ? 3.2 : 1.05) + Math.sin(t * 71) * 0.006 * buzz;
+    if (!isPhone()) stage.camera.position.z = 6.4 + shot.creep * 5.1;
 
     // The roll: the car turns side-on and drives out to the left, faster and faster. A car
     // arriving or leaving after a pick slides along the same line (shot.entry).
     const exit = isPhone() ? -14 : -19;
-    const x = base.x + (exit - base.x) * shot.roll + shot.entry;
+    const start = base.x + ((isPhone() ? -0.8 : 0.2) - base.x) * shot.creep;
+    const x = start + (exit - start) * shot.roll + shot.entry;
     car.root.position.x = x;
     // In the lobby the car in shadow turns a little, slowly, so the light runs along its bodywork.
+    // In the burnout the rear steps out and back, the car fighting its own wheelspin.
     const sway = race || reduce ? 0 : Math.sin(t * 0.35) * 0.12;
-    car.root.rotation.y = shot.launch === 0 && shot.roll === 0 ? base.yaw + sway : shot.yaw;
+    const fishtail = (Math.sin(t * 7.3) * 0.035 + Math.sin(t * 13.1) * 0.012) * shot.burn;
+    car.root.rotation.y = (base.yaw + sway) * (1 - shot.turn) + fishtail;
     distance += Math.abs(x - lastX);
     lastX = x;
-    for (const w of car.wheels) w.rotation.z = distance / 0.36;
+    // Wheelspin: the rear wheels turn far faster than the car moves, in the burnout and off the line.
+    const offTheLine = shot.launch * Math.max(0, 1 - shot.roll / 0.12);
+    spin += dt * (shot.burn * 62 + offTheLine * 40);
+    for (const w of car.wheels) w.rotation.z = distance / 0.36 + (w.name.startsWith("wheel_R") ? spin : 0);
+
+    // Tyre smoke from the rear contact patches while they spin.
+    const smoking = reduce ? 0 : Math.max(shot.burn, offTheLine * 0.8);
+    smoke.emit(smoking, dt, car.wheels.filter((w) => w.name.startsWith("wheel_R")));
+    smoke.update(dt);
 
     // Streaks, rim light and bloom follow the speed; the rim also pulses with the revs.
     const speed = Math.max(shot.roll, Math.min(1, Math.abs(shot.entry) / 10));
@@ -517,7 +552,7 @@ async function main() {
     }
     streakMats[0].opacity = speed * 0.7;
     streakMats[1].opacity = speed * 0.9;
-    stage.rim.intensity = 14 + rev * 22 + speed * 40;
+    stage.rim.intensity = 14 + rev * 22 + speed * 40 + shot.burn * 18;
     stage.bloom.strength = 0.28 + rev * 0.12 + speed * 0.45;
     stage.camera.position.x = isPhone() ? 0 : -shot.roll * 1.2;
 
@@ -531,7 +566,7 @@ async function main() {
 
     // The readout.
     rpmOut.textContent = Math.round(sample.rpm).toLocaleString("en-GB");
-    gearOut.textContent = sample.speed < 1 && shot.roll === 0 ? "1" : String(sample.gear);
+    gearOut.textContent = shot.roll === 0 ? "1" : String(sample.gear);
     speedOut.textContent = String(Math.round(sample.speed));
     fill.style.transform = `scaleX(${Math.min(1, sample.rpm / RPM_HIGH).toFixed(3)})`;
 
