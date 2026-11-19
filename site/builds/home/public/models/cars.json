@@ -1,0 +1,199 @@
+{
+ "cars": [
+  {
+   "id": "rb19",
+   "name": "RB19",
+   "team": "Red Bull Racing",
+   "season": 2023,
+   "model": "models/rb19.glb",
+   "yaw": -1.5707963267948966,
+   "borrowed": false,
+   "credit": {
+    "title": "Oracle Red Bull F1 Car RB19 2023",
+    "author": "Redgrund",
+    "url": "https://sketchfab.com/3d-models/oracle-red-bull-f1-car-rb19-2023-e4afe46f3aab4b23a418da06fc163821",
+    "license": "CC BY 4.0"
+   }
+  },
+  {
+   "id": "sf23",
+   "name": "SF-23",
+   "team": "Ferrari",
+   "season": 2023,
+   "model": "models/sf23.glb",
+   "yaw": -1.5707963267948966,
+   "borrowed": false,
+   "credit": {
+    "title": "Scuderia Ferrari F1 SF23 2023",
+    "author": "Redgrund",
+    "url": "https://sketchfab.com/3d-models/scuderia-ferrari-f1-sf23-2023-ecb0f812bc454331bbe721655b0780ec",
+    "license": "CC BY 4.0"
+   }
+  },
+  {
+   "id": "rb20",
+   "name": "RB20",
+   "team": "Red Bull Racing",
+   "season": 2024,
+   "model": "models/rb20.glb",
+   "yaw": -1.5707963267948966,
+   "borrowed": false,
+   "credit": {
+    "title": "2024 Redbull RB20",
+    "author": "Dave Bored SketchFab",
+    "url": "https://sketchfab.com/3d-models/2024-redbull-rb20-4315ff70ec694ef0b7ebfb84145ef48c",
+    "license": "CC BY 4.0"
+   }
+  },
+  {
+   "id": "mcl38",
+   "name": "MCL38",
+   "team": "McLaren",
+   "season": 2024,
+   "model": "models/mcl39.glb",
+   "yaw": -1.5707963267948966,
+   "borrowed": true,
+   "credit": {
+    "title": "2025 McLaren MCL39",
+    "author": "Abu Saif",
+    "url": "https://sketchfab.com/3d-models/2025-mclaren-mcl39-710fc591067848d0b3068ae3fb160ede",
+    "license": "CC BY 4.0"
+   }
+  },
+  {
+   "id": "sf24",
+   "name": "SF-24",
+   "team": "Ferrari",
+   "season": 2024,
+   "model": "models/sf23.glb",
+   "yaw": -1.5707963267948966,
+   "borrowed": true,
+   "credit": {
+    "title": "Scuderia Ferrari F1 SF23 2023",
+    "author": "Redgrund",
+    "url": "https://sketchfab.com/3d-models/scuderia-ferrari-f1-sf23-2023-ecb0f812bc454331bbe721655b0780ec",
+    "license": "CC BY 4.0"
+   }
+  },
+  {
+   "id": "w15",
+   "name": "W15",
+   "team": "Mercedes",
+   "season": 2024,
+   "model": "models/w15.glb",
+   "yaw": -1.5707963267948966,
+   "borrowed": false,
+   "credit": {
+    "title": "Mercedes W15",
+    "author": "Abu Saif",
+    "url": "https://sketchfab.com/3d-models/mercedes-w15-0c6b95f5329f4a4e8c3f039d890ee193",
+    "license": "CC BY 4.0"
+   }
+  },
+  {
+   "id": "mcl39",
+   "name": "MCL39",
+   "team": "McLaren",
+   "season": 2025,
+   "model": "models/mcl39.glb",
+   "yaw": -1.5707963267948966,
+   "borrowed": false,
+   "credit": {
+    "title": "2025 McLaren MCL39",
+    "author": "Abu Saif",
+    "url": "https://sketchfab.com/3d-models/2025-mclaren-mcl39-710fc591067848d0b3068ae3fb160ede",
+    "license": "CC BY 4.0"
+   }
+  },
+  {
+   "id": "rb21",
+   "name": "RB21",
+   "team": "Red Bull Racing",
+   "season": 2025,
+   "model": "models/rb21.glb",
+   "yaw": -1.5707963267948966,
+   "borrowed": false,
+   "credit": {
+    "title": "F1-2025 Redbull RB21",
+    "author": "Abu Saif",
+    "url": "https://sketchfab.com/3d-models/f1-2025-redbull-rb21-418c3b3cdf9d41ea8beb15076d875a86",
+    "license": "CC BY 4.0"
+   }
+  },
+  {
+   "id": "w16",
+   "name": "W16",
+   "team": "Mercedes",
+   "season": 2025,
+   "model": "models/w15.glb",
+   "yaw": -1.5707963267948966,
+   "borrowed": true,
+   "credit": {
+    "title": "Mercedes W15",
+    "author": "Abu Saif",
+    "url": "https://sketchfab.com/3d-models/mercedes-w15-0c6b95f5329f4a4e8c3f039d890ee193",
+    "license": "CC BY 4.0"
+   }
+  },
+  {
+   "id": "w17",
+   "name": "W17",
+   "team": "Mercedes",
+   "season": 2026,
+   "model": "models/w17.glb",
+   "yaw": -1.5707963267948966,
+   "borrowed": false,
+   "credit": {
+    "title": "2026 Mercedes W17",
+    "author": "Dave Love SketchFab",
+    "url": "https://sketchfab.com/3d-models/2026-mercedes-w17-b806f1e70aa343219e7158169549b97b",
+    "license": "CC BY 4.0"
+   }
+  },
+  {
+   "id": "mcl40",
+   "name": "MCL40",
+   "team": "McLaren",
+   "season": 2026,
+   "model": "models/mcl40.glb",
+   "yaw": -1.5707963267948966,
+   "borrowed": false,
+   "credit": {
+    "title": "2026 McLaren MCL40",
+    "author": "Dave Love SketchFab",
+    "url": "https://sketchfab.com/3d-models/2026-mclaren-mcl40-96214ad5624f42a0861f77008f8d29e7",
+    "license": "CC BY 4.0"
+   }
+  },
+  {
+   "id": "sf26",
+   "name": "SF-26",
+   "team": "Ferrari",
+   "season": 2026,
+   "model": "models/sf26.glb",
+   "yaw": -1.5707963267948966,
+   "borrowed": false,
+   "credit": {
+    "title": "2026 Ferrari SF-26",
+    "author": "Dave Love SketchFab",
+    "url": "https://sketchfab.com/3d-models/2026-ferrari-sf-26-e5ca6cecdc42449283f4bed27360f2a7",
+    "license": "CC BY 4.0"
+   }
+  },
+  {
+   "id": "rb22",
+   "name": "RB22",
+   "team": "Red Bull Racing",
+   "season": 2026,
+   "model": "models/rb21.glb",
+   "yaw": -1.5707963267948966,
+   "borrowed": true,
+   "credit": {
+    "title": "F1-2025 Redbull RB21",
+    "author": "Abu Saif",
+    "url": "https://sketchfab.com/3d-models/f1-2025-redbull-rb21-418c3b3cdf9d41ea8beb15076d875a86",
+    "license": "CC BY 4.0"
+   }
+  }
+ ]
+}

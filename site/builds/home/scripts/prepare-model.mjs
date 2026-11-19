@@ -2,6 +2,11 @@
 //
 //   node scripts/prepare-model.mjs <source.glb> <target.glb> [--plain]
 //
+// Also measures which way the car's nose points (the rear wing is the tallest part of an F1 car,
+// so the higher end is the back) and returns the yaw that turns the nose to -X, the page's
+// convention, along with the model's own credit from the file (Sketchfab writes title, author,
+// licence and source into it).
+//
 // By default the livery is kept exactly as modelled. With --plain, every logo pixel of a baked
 // livery is repainted with the paint around it (the livery's base colour, measured, or carbon),
 // leaving shape, normal and roughness detail untouched. Either way: unused vertex data goes,
@@ -12,10 +17,9 @@ import { ALL_EXTENSIONS, EXTMeshoptCompression } from "@gltf-transform/extension
 import { dedup, meshopt, prune, quantize, textureCompress } from "@gltf-transform/functions";
 import { MeshoptEncoder } from "meshoptimizer";
 import sharp from "sharp";
+import { pathToFileURL } from "node:url";
 
-const [source, target] = process.argv.slice(2).filter((a) => !a.startsWith("--"));
-const plain = process.argv.includes("--plain");
-if (!source || !target) throw new Error("usage: prepare-model.mjs <source.glb> <target.glb> [--plain]");
+
 
 /** Carbon and rubber: near-black and unsaturated. */
 const isCarbon = (r, g, b) => Math.max(r, g, b) < 40 && Math.max(r, g, b) - Math.min(r, g, b) < 18;
@@ -131,36 +135,94 @@ async function repaint(png) {
   return sharp(data, { raw: { width: W, height: H, channels: 4 } }).png().toBuffer();
 }
 
-await MeshoptEncoder.ready;
-const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ "meshopt.encoder": MeshoptEncoder });
-const doc = await io.read(source);
-
-if (plain) {
-  console.log("Removing the logos from the livery");
-  for (const material of doc.getRoot().listMaterials()) {
-    const base = material.getBaseColorTexture();
-    if (base) base.setImage(await repaint(base.getImage()));
-  }
-}
-
-console.log("Dropping vertex data the material never reads");
-for (const mesh of doc.getRoot().listMeshes()) {
-  for (const prim of mesh.listPrimitives()) {
-    for (const name of ["TEXCOORD_1", "TEXCOORD_2", "TEXCOORD_3", "TANGENT"]) {
-      const attr = prim.getAttribute(name);
-      if (attr) prim.setAttribute(name, null);
+/** World-space positions of every vertex in the scene, sampled (every nth vertex). */
+function samplePositions(doc, every = 7) {
+  const out = [];
+  const v = [0, 0, 0];
+  for (const node of doc.getRoot().listNodes()) {
+    const mesh = node.getMesh();
+    if (!mesh) continue;
+    const m = node.getWorldMatrix();
+    for (const prim of mesh.listPrimitives()) {
+      const pos = prim.getAttribute("POSITION");
+      if (!pos) continue;
+      for (let i = 0; i < pos.getCount(); i += every) {
+        pos.getElement(i, v);
+        out.push([
+          m[0] * v[0] + m[4] * v[1] + m[8] * v[2] + m[12],
+          m[1] * v[0] + m[5] * v[1] + m[9] * v[2] + m[13],
+          m[2] * v[0] + m[6] * v[1] + m[10] * v[2] + m[14],
+        ]);
+      }
     }
   }
+  return out;
 }
 
-console.log("Compressing");
-await doc.transform(
-  dedup(),
-  prune(),
-  textureCompress({ encoder: sharp, targetFormat: "webp", resize: [2048, 2048], quality: 88 }),
-  quantize(),
-  meshopt({ encoder: MeshoptEncoder, level: "medium" }),
-);
-doc.createExtension(EXTMeshoptCompression).setRequired(true);
-await io.write(target, doc);
-console.log(`Wrote ${target}`);
+/** The yaw that turns this car's nose to -X: the higher end of its long axis is the rear wing. */
+function noseYaw(doc) {
+  const pts = samplePositions(doc);
+  const min = [0, 1, 2].map((i) => Math.min(...pts.map((p) => p[i])));
+  const max = [0, 1, 2].map((i) => Math.max(...pts.map((p) => p[i])));
+  const axis = max[0] - min[0] > max[2] - min[2] ? 0 : 2;
+  const len = max[axis] - min[axis];
+  const top = (from, to) => Math.max(...pts.filter((p) => p[axis] >= from && p[axis] <= to).map((p) => p[1]));
+  const lowEnd = top(min[axis], min[axis] + len * 0.15);
+  const highEnd = top(max[axis] - len * 0.15, max[axis]);
+  const noseAtMax = lowEnd > highEnd; // the rear wing is at the low end, so the nose is at the high end
+  // Rotations about Y that take the nose direction to -X.
+  if (axis === 2) return { yaw: noseAtMax ? -Math.PI / 2 : Math.PI / 2, axis: "z", noseAtMax, ends: [lowEnd, highEnd] };
+  return { yaw: noseAtMax ? Math.PI : 0, axis: "x", noseAtMax, ends: [lowEnd, highEnd] };
+}
+
+export async function prepare(source, target, { plain = false } = {}) {
+  await MeshoptEncoder.ready;
+  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ "meshopt.encoder": MeshoptEncoder });
+  const doc = await io.read(source);
+  const extras = doc.getRoot().getAsset().extras ?? {};
+  const orientation = noseYaw(doc);
+
+  if (plain) {
+    console.log("Removing the logos from the livery");
+    for (const material of doc.getRoot().listMaterials()) {
+      const base = material.getBaseColorTexture();
+      if (base) base.setImage(await repaint(base.getImage()));
+    }
+  }
+
+  console.log("Dropping vertex data no material reads");
+  const usedSets = new Set([0]);
+  for (const material of doc.getRoot().listMaterials()) {
+    for (const info of [material.getBaseColorTextureInfo(), material.getNormalTextureInfo(), material.getOcclusionTextureInfo(),
+      material.getEmissiveTextureInfo(), material.getMetallicRoughnessTextureInfo()]) {
+      if (info) usedSets.add(info.getTexCoord());
+    }
+  }
+  for (const mesh of doc.getRoot().listMeshes()) {
+    for (const prim of mesh.listPrimitives()) {
+      for (const name of ["TEXCOORD_1", "TEXCOORD_2", "TEXCOORD_3", "TANGENT"]) {
+        if (name.startsWith("TEXCOORD") && usedSets.has(Number(name.slice(-1)))) continue;
+        if (prim.getAttribute(name)) prim.setAttribute(name, null);
+      }
+    }
+  }
+
+  console.log("Compressing");
+  await doc.transform(
+    dedup(),
+    prune(),
+    textureCompress({ encoder: sharp, targetFormat: "webp", resize: [2048, 2048], quality: 88 }),
+    quantize(),
+    meshopt({ encoder: MeshoptEncoder, level: "medium" }),
+  );
+  doc.createExtension(EXTMeshoptCompression).setRequired(true);
+  await io.write(target, doc);
+  console.log(`Wrote ${target}`);
+  return { ...orientation, extras };
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const [source, target] = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+  if (!source || !target) throw new Error("usage: prepare-model.mjs <source.glb> <target.glb> [--plain]");
+  console.log(await prepare(source, target, { plain: process.argv.includes("--plain") }));
+}

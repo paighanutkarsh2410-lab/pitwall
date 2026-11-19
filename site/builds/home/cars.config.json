@@ -1,0 +1,18 @@
+{
+  "_comment": "Every car that won a race, 2023-2026. 'model' is the source file in models/source; a car with no model of its own borrows its team's nearest one ('borrowed').",
+  "cars": [
+    { "id": "rb19", "name": "RB19", "team": "Red Bull Racing", "season": 2023, "model": "rb19.glb" },
+    { "id": "sf23", "name": "SF-23", "team": "Ferrari", "season": 2023, "model": "sf23.glb" },
+    { "id": "rb20", "name": "RB20", "team": "Red Bull Racing", "season": 2024, "model": "rb20.glb" },
+    { "id": "mcl38", "name": "MCL38", "team": "McLaren", "season": 2024, "model": "mcl39.glb", "borrowed": true },
+    { "id": "sf24", "name": "SF-24", "team": "Ferrari", "season": 2024, "model": "sf23.glb", "borrowed": true },
+    { "id": "w15", "name": "W15", "team": "Mercedes", "season": 2024, "model": "w15.glb" },
+    { "id": "mcl39", "name": "MCL39", "team": "McLaren", "season": 2025, "model": "mcl39.glb" },
+    { "id": "rb21", "name": "RB21", "team": "Red Bull Racing", "season": 2025, "model": "rb21.glb" },
+    { "id": "w16", "name": "W16", "team": "Mercedes", "season": 2025, "model": "w15.glb", "borrowed": true },
+    { "id": "w17", "name": "W17", "team": "Mercedes", "season": 2026, "model": "w17.glb" },
+    { "id": "mcl40", "name": "MCL40", "team": "McLaren", "season": 2026, "model": "mcl40.glb" },
+    { "id": "sf26", "name": "SF-26", "team": "Ferrari", "season": 2026, "model": "sf26.glb" },
+    { "id": "rb22", "name": "RB22", "team": "Red Bull Racing", "season": 2026, "model": "rb21.glb", "borrowed": true }
+  ]
+}

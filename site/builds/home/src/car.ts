@@ -19,8 +19,6 @@ export interface Car {
 }
 
 const LENGTH = 5.6;
-// The source model lies along Z; this turns its nose to -X.
-const MODEL_YAW = -Math.PI / 2;
 const NAVY = 0x1a2340;
 const RED = 0xc8102e;
 const YELLOW = 0xffc906;
@@ -222,28 +220,63 @@ function separateWheels(root: THREE.Group, body: THREE.Object3D): THREE.Object3D
   return wheels;
 }
 
-export async function loadCar(url = "models/rb19.glb"): Promise<Car> {
+/** A car as public/models/cars.json describes it (written by scripts/prepare-cars.mjs). */
+export interface CarInfo {
+  id: string;
+  name: string;
+  team: string;
+  season: number;
+  model: string;
+  yaw: number;
+  borrowed: boolean;
+  credit: { title: string; author: string; url: string; license: string };
+}
+
+export async function loadCars(): Promise<CarInfo[]> {
   try {
-    const head = await fetch(url, { method: "HEAD" });
-    if (!head.ok) return standIn();
-    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-    const gltf = await loader.loadAsync(url);
+    const r = await fetch("models/cars.json");
+    return r.ok ? (await r.json()).cars : [];
+  } catch {
+    return [];
+  }
+}
+
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const loaded = new Map<string, Promise<THREE.Group>>(); // model file -> its scene, loaded once
+
+/** Starts loading a model without waiting for it, so a car is ready by the time it's chosen. */
+export function preload(info: CarInfo): void {
+  if (!loaded.has(info.model)) loaded.set(info.model, loader.loadAsync(info.model).then((g) => g.scene));
+}
+
+export async function loadCar(info: CarInfo | undefined): Promise<Car> {
+  if (!info) return standIn();
+  try {
+    preload(info);
+    // Each car gets its own copy: the wheel split edits the meshes, so cloned geometry is needed.
+    const scene = (await loaded.get(info.model)!).clone(true);
+    scene.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (mesh.isMesh) mesh.geometry = mesh.geometry.clone();
+    });
     const root = new THREE.Group();
-    const body = fit(gltf.scene, MODEL_YAW);
+    const body = fit(scene, info.yaw);
     root.add(body);
     root.updateMatrixWorld(true);
     // The wheels are fused into the body meshes; split them out so they can turn on their axles.
     const wheels = separateWheels(root, body);
     shadowed(root);
+    const c = info.credit;
+    const borrowed = info.borrowed ? ` (shown with the ${c.title} model)` : "";
     return {
       root,
       body,
       wheels,
       standIn: false,
-      credit: '3D model: "Oracle Red Bull F1 Car RB19 2023" by redgrund (Sketchfab, CC BY 4.0). Team and sponsor marks belong to their owners.',
+      credit: `${info.name}${borrowed}: 3D model "${c.title}" by ${c.author} (Sketchfab, ${c.license}). Team and sponsor marks belong to their owners.`,
     };
   } catch (error) {
-    console.warn("RB19 model did not load; using the stand-in", error);
+    console.warn(`${info.name} did not load; using the stand-in`, error);
     return standIn();
   }
 }

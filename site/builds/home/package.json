@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build --base ./",
-    "prepare-model": "node scripts/prepare-model.mjs models/source/rb19.glb public/models/rb19.glb"
+    "prepare-cars": "node scripts/prepare-cars.mjs"
   },
   "dependencies": {
     "gsap": "3.15.1",

@@ -1,7 +1,7 @@
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import * as THREE from "three";
-import { loadCar } from "./car";
+import { loadCar, loadCars } from "./car";
 import { Telemetry } from "./rev";
 import { createStage } from "./stage";
 import "./style.css";
@@ -27,10 +27,12 @@ const LAUNCH_TO = 9000;
 
 async function main() {
   const stage = createStage($<HTMLCanvasElement>(".stage"));
-  const [car, telemetry] = await Promise.all([loadCar(), Telemetry.load()]);
+  const cars = await loadCars();
+  const wanted = new URLSearchParams(location.search).get("car") ?? "rb20";
+  const [car, telemetry] = await Promise.all([loadCar(cars.find((c) => c.id === wanted)), Telemetry.load()]);
   stage.scene.add(car.root);
   if (car.credit) $<HTMLElement>(".foot__model").textContent = car.credit;
-  console.info(`car: ${car.standIn ? "stand-in" : "RB19"}, ${car.wheels.length} wheels`);
+  console.info(`car: ${car.standIn ? "stand-in" : wanted}, ${car.wheels.length} wheels`);
 
   // Framing. Desktop: the car fills the right half, nose towards the camera's left.
   // Phone: the car takes the top half of the screen.
