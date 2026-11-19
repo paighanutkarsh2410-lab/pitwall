@@ -42,6 +42,7 @@ TARGET = os.environ.get("PITWALL_UPLINK_BROKERS", "toxiproxy:19093")
 TOXIPROXY = os.environ.get("PITWALL_TOXIPROXY_URL", "http://toxiproxy:8474").rstrip("/")
 PROXY = os.environ.get("PITWALL_TOXIPROXY_PROXY", "factory-kafka")
 SEND_TIMEOUT = 8.0
+CURRENT_WITHIN = 2.0  # seconds: a confirmed batch with nothing older is "caught up"
 
 tracker = LinkTracker()
 
@@ -75,12 +76,16 @@ async def backlog(consumer) -> int:
     return total
 
 
-async def drained(consumer) -> bool:
-    """Has everything at the track been read? (Then the batch just confirmed was current.)"""
-    for tp, end in (await ends(consumer)).items():
-        if await consumer.position(tp) < end:
-            return False
-    return True
+def current(batches) -> bool:
+    """Was this batch current? Its oldest event was sent at the track under CURRENT_WITHIN
+    seconds ago. While a backlog drains every batch carries old events; once it has drained,
+    only fresh ones. ("Nothing left unread" is the wrong test for a stream that never stops:
+    a few new events have always just arrived.)"""
+    ages = [
+        observe.age_seconds(observe.sent_of(m.headers)) for msgs in batches.values() for m in msgs
+    ]
+    known = [a for a in ages if a is not None]
+    return bool(known) and max(known) <= CURRENT_WITHIN
 
 
 async def rewind(consumer, partitions) -> None:
@@ -143,7 +148,7 @@ async def work(health: Health) -> None:
                     backoff = min(backoff * 2, 5)
                     continue
                 backoff = 1.0
-                outage, recovery = tracker.sent(time.time(), await drained(consumer))
+                outage, recovery = tracker.sent(time.time(), current(batches))
                 if outage:
                     observe.UPLINK_OUTAGE.observe(outage.lasted)
                     log.warning("Link back after %.1f s down; catching up", outage.lasted)

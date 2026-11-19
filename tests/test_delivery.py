@@ -80,3 +80,19 @@ def test_a_link_that_never_failed_reports_nothing():
     link = LinkTracker()
     assert link.sent(1.0, True) == (None, None)
     assert link.history == []
+
+
+def test_a_batch_is_current_when_none_of_its_events_is_old(monkeypatch):
+    from pitwall import observe
+    from pitwall.services import uplink
+
+    class M:
+        def __init__(self, sent_ms):
+            self.headers = [(observe.SENT_HEADER, str(sent_ms).encode())]
+
+    monkeypatch.setattr(observe, "now_ms", lambda: 100_000)
+    fresh = {"p0": [M(99_800), M(99_900)], "p1": [M(99_950)]}
+    backlog = {"p0": [M(99_900)], "p1": [M(40_000), M(99_950)]}  # p1 still has a 60 s old event
+    assert uplink.current(fresh) is True
+    assert uplink.current(backlog) is False
+    assert uplink.current({"p0": []}) is False

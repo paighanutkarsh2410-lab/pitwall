@@ -93,9 +93,10 @@ class Recovery:
 class LinkTracker:
     """Follows the uplink through outages: up, then down, then catching up, then up again.
 
-    Caught up means: after a batch the factory confirmed, nothing is left unread on any trackside
-    partition. (Offsets of different partitions can't be compared, so "the newest event looks
-    fresh" is not enough: one partition can be current while another is still backlogged.)
+    Caught up means: a batch the factory confirmed held no event older than a couple of
+    seconds. (Not "the newest event is fresh": offsets of different partitions can't be compared,
+    and one partition can be current while another is still backlogged. Not "nothing left
+    unread" either: on a live stream new events have always just arrived.)
     """
 
     state: str = "up"
@@ -114,15 +115,15 @@ class LinkTracker:
         self.state = "down"
         return None
 
-    def sent(self, now: float, drained: bool) -> tuple[Outage | None, Recovery | None]:
-        """A batch reached the factory. ``drained``: nothing is left unread at the track."""
+    def sent(self, now: float, current: bool) -> tuple[Outage | None, Recovery | None]:
+        """A batch reached the factory. ``current``: none of its events was old."""
         outage = recovery = None
         if self.state == "down":
             self.outage = now - (self.down_since or now)
             self.restored_at = now
             self.state = "catching_up"
             outage = Outage(self.outage, now)
-        if self.state == "catching_up" and drained:
+        if self.state == "catching_up" and current:
             recovery = Recovery(self.outage, now - (self.restored_at or now))
             self.history.append(recovery)
             self.state = "up"
