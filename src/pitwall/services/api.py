@@ -112,7 +112,6 @@ async def get_state() -> dict:
     return state()
 
 
-@api.websocket("/ws")
 class Encoded:
     """Each shared piece of a frame (board, strategy, positions, track) encoded to JSON once per
     version, however many browsers are watching. Found by the load test: at 200 viewers the API
@@ -133,6 +132,7 @@ class Encoded:
 encoded = Encoded()
 
 
+@api.websocket("/ws")
 async def stream(socket: WebSocket) -> None:
     await socket.accept()
     observe.WEBSOCKETS.inc()

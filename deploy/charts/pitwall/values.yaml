@@ -41,6 +41,7 @@ services:
     replicas: 1
     db: true
     canary: api
+    probe: true  # the canary is also checked the way a browser uses it (pitwall probe)
     defect: ""
     autoscale: { by: browsers, min: 1, max: 3, per: 100 }
     resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { memory: 384Mi } }

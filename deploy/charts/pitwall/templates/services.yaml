@@ -12,6 +12,22 @@ spec:
   ports:
     - { name: http, port: 8080, targetPort: http }
 ---
+{{- if $svc.probe }}
+# Reaches only the canary pod during a release (Argo Rollouts sets its selector), so the analysis
+# can connect to the new version the way a browser would.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}-canary
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    {{- include "pitwall.labels" $ | nindent 4 }}
+spec:
+  selector: { app.kubernetes.io/name: {{ $name }} }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+---
+{{- end }}
 {{- if $svc.canary }}
 # Released by Argo Rollouts: a canary runs next to the stable version and is promoted only if its
 # own metrics pass the analysis in analysis.yaml; otherwise it is rolled back automatically.
@@ -34,6 +50,9 @@ spec:
   progressDeadlineAbort: true  # a canary that never becomes ready (a crash loop) is rolled back
   strategy:
     canary:
+      {{- if $svc.probe }}
+      canaryService: {{ $name }}-canary
+      {{- end }}
       canaryMetadata:
         labels: { pitwall.dev/role: canary }
       stableMetadata:

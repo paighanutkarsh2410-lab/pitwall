@@ -88,3 +88,20 @@ def test_shared_frame_pieces_are_encoded_once_per_version():
     assert len(calls) == 1 and json.loads(first) == {"lap": 7, "cars": []}
     enc.get("board", 4, board)  # a new version is encoded again
     assert len(calls) == 2
+
+
+def test_the_websocket_delivers_a_board_to_a_browser():
+    # The regression that a canary missed: the /ws decorator ended up on the wrong object, every
+    # browser was refused, and nothing in the analysis noticed.
+    import json
+
+    from fastapi.testclient import TestClient
+
+    from pitwall.services import api as service
+
+    service.live.on_board({"run": "r", "t": 1, "lap": 5, "session": {"race_id": "x"}, "cars": []})
+    client = TestClient(service.api)  # no lifespan: no Kafka needed
+    with client.websocket_connect("/ws") as ws:
+        ws.send_text(json.dumps({"watch": [1]}))
+        frame = json.loads(ws.receive_text())
+    assert frame["board"]["lap"] == 5

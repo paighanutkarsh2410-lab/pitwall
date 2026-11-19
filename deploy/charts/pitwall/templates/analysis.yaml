@@ -154,3 +154,37 @@ spec:
             (sum(rate(pitwall_http_requests_total{service="api",code=~"5..",
             rollouts_pod_template_hash="{{ "{{" }}args.hash{{ "}}" }}"}[1m])) or vector(0))
             / sum(rate(pitwall_http_requests_total{service="api",rollouts_pod_template_hash="{{ "{{" }}args.hash{{ "}}" }}"}[1m]))
+    # Metrics only see what the canary reports about itself. A release whose WebSocket refused
+    # every browser passed all of the above (the load test found it), so the canary is also
+    # opened the way a browser opens it: connect to /ws and wait for a timing board.
+    - name: browsers
+      initialDelay: {{ .Values.canary.analysis.initialDelay }}
+      interval: {{ .Values.canary.analysis.interval }}
+      count: 3
+      failureLimit: 1
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            activeDeadlineSeconds: 60
+            ttlSecondsAfterFinished: 600
+            template:
+              spec:
+                restartPolicy: Never
+                automountServiceAccountToken: false
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 10001
+                  seccompProfile: { type: RuntimeDefault }
+                containers:
+                  - name: probe
+                    image: {{ include "pitwall.image" . }}
+                    imagePullPolicy: {{ .Values.image.pullPolicy }}
+                    args: [probe, --url, "ws://api-canary.{{ .Release.Namespace }}.svc:8080/ws", --timeout, "20"]
+                    resources:
+                      requests: { cpu: 20m, memory: 64Mi }
+                      limits: { memory: 128Mi }
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem: true
+                      capabilities: { drop: [ALL] }

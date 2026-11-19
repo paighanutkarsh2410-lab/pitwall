@@ -323,6 +323,28 @@ def cmd_service(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_probe(args: argparse.Namespace) -> int:
+    """Connects to a pit wall's WebSocket the way a browser does and waits for a timing board.
+    Exit 0 if one arrives in time, 1 if not: a canary check that tests what users see."""
+    from websockets.sync.client import connect
+
+    deadline = time.monotonic() + args.timeout
+    try:
+        with connect(args.url, open_timeout=args.timeout) as socket:
+            socket.send(json.dumps({"watch": [1]}))
+            while time.monotonic() < deadline:
+                frame = json.loads(socket.recv(timeout=max(0.1, deadline - time.monotonic())))
+                if frame.get("board"):
+                    lap = frame["board"].get("lap")
+                    print(f"OK: {args.url} sent a timing board (lap {lap})")
+                    return 0
+    except Exception as error:
+        print(f"FAIL: {args.url}: {type(error).__name__}: {error}", file=sys.stderr)
+        return 1
+    print(f"FAIL: {args.url}: no timing board within {args.timeout:g} s", file=sys.stderr)
+    return 1
+
+
 def cmd_validate(args: argparse.Namespace) -> int:
     summary = races.summary(args.race)
     if summary is None:
@@ -403,6 +425,11 @@ def parser() -> argparse.ArgumentParser:
     s.add_argument("name", choices=("ingest", "timing", "strategy", "api", "replayer", "uplink"))
     s.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8080")))
     s.set_defaults(run=cmd_service)
+
+    s = sub.add_parser("probe", help="Check a pit wall serves browsers (exit 0 if it does)")
+    s.add_argument("--url", default="ws://localhost:8080/ws")
+    s.add_argument("--timeout", type=float, default=15.0)
+    s.set_defaults(run=cmd_probe)
 
     s = sub.add_parser("validate", help="Check a downloaded race against the event schema")
     s.add_argument("race")
