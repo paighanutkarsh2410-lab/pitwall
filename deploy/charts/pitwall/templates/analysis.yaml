@@ -42,14 +42,21 @@ the canary's hash in as args.hash. Any failing check (after one retry) rolls the
       interval: {{ .root.Values.canary.analysis.interval }}
       count: {{ .root.Values.canary.analysis.count }}
       failureLimit: 1
-      # No samples yet is not a failure on its own: "working" catches a canary doing nothing.
-      successCondition: len(result) == 0 || isNaN(result[0]) || result[0] < {{ .seconds }}
+      # Relative, not absolute: freshness is measured from the replayer, so trouble upstream
+      # (another service rolling out) makes the stable version late too, and that isn't the
+      # canary's fault. The canary passes if its p99 is within the SLO, or no worse than the
+      # stable version's at the same moment (x1.25 + 0.1 s). The query gives the canary's p99
+      # divided by that allowance: above 1 fails. No samples yet is not a failure on its own:
+      # "working" catches a canary doing nothing.
+      successCondition: len(result) == 0 || isNaN(result[0]) || result[0] <= 1
       provider:
         prometheus:
           address: {{ .root.Values.canary.prometheus }}
           query: >-
             histogram_quantile(0.99, sum by (le) (rate(pitwall_event_freshness_seconds_bucket{stage="{{ .stage }}",
             rollouts_pod_template_hash="{{ "{{" }}args.hash{{ "}}" }}"}[1m])))
+            / on() clamp_min(1.25 * histogram_quantile(0.99, sum by (le) (rate(pitwall_event_freshness_seconds_bucket{stage="{{ .stage }}",
+            rollouts_pod_template_hash="{{ "{{" }}args.stable{{ "}}" }}"}[1m]))) + 0.1, {{ .seconds }})
 {{- end }}
 ---
 apiVersion: argoproj.io/v1alpha1
@@ -61,6 +68,7 @@ spec:
   args:
     - name: service
     - name: hash
+    - name: stable
   metrics:
     {{- include "pitwall.analysis.common" . }}
     {{- include "pitwall.analysis.freshness" (dict "root" . "stage" "ingest" "seconds" "0.5") }}
@@ -87,6 +95,7 @@ spec:
   args:
     - name: service
     - name: hash
+    - name: stable
   metrics:
     {{- include "pitwall.analysis.common" . }}
     {{- include "pitwall.analysis.freshness" (dict "root" . "stage" "timing" "seconds" "1") }}
@@ -113,6 +122,7 @@ spec:
   args:
     - name: service
     - name: hash
+    - name: stable
   metrics:
     {{- include "pitwall.analysis.common" . }}
     {{- /* strategy publishes once a second, so its p99 freshness is about 2 s by design */}}
@@ -127,6 +137,7 @@ spec:
   args:
     - name: service
     - name: hash
+    - name: stable
   metrics:
     {{- include "pitwall.analysis.common" . }}
     {{- include "pitwall.analysis.freshness" (dict "root" . "stage" "api" "seconds" "0.5") }}

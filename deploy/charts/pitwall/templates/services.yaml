@@ -51,6 +51,8 @@ spec:
               - { name: service, value: {{ $name }} }
               - name: hash
                 valueFrom: { podTemplateHashValue: Latest }
+              - name: stable
+                valueFrom: { podTemplateHashValue: Stable }
   {{- else if $svc.races }}
   strategy: { type: Recreate }  # one replayer at a time: it is the race itself, not a service
   {{- end }}
