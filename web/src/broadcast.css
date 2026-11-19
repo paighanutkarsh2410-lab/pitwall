@@ -148,3 +148,18 @@ body {
 .waiting p { font-family: var(--script); font-size: 3rem; color: var(--accent); }
 .foot { font-size: 11px; }
 .overlay { backdrop-filter: blur(8px); }
+
+/* ---- The public site: no race chosen yet, and changing race ------------------------------- */
+a.choose-race {
+  display: inline-block;
+  padding: 12px 2rem 12px 1.4rem;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 0.6rem) 100%, 0 100%);
+}
+a.change-race { color: var(--fg); text-underline-offset: 3px; }
+a.change-race:hover { color: var(--accent); }

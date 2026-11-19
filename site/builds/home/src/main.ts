@@ -1,10 +1,10 @@
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import * as THREE from "three";
-import { type Car, type CarInfo, loadCar, loadCars, preload } from "./car";
+import { type Car, type CarInfo, loadCar, loadCars, preload, silhouette } from "./car";
 import { Telemetry } from "./rev";
 import { createStage } from "./stage";
-import { cssVars, type Theme, themeFor } from "./theme";
+import { cssVars, THEMES, type Theme, themeFor } from "./theme";
 import "./style.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -35,6 +35,7 @@ const gearOut = $<HTMLElement>(".rev__g");
 const speedOut = $<HTMLElement>(".rev__s");
 const fill = $<HTMLElement>(".rev__fill");
 const card = $<HTMLElement>(".card");
+const CHOICE_KEY = "pitwall.choice"; // shared with the pit wall: the race it opens on
 const hero = $<HTMLElement>(".hero");
 const picker = $<HTMLDialogElement>(".picker");
 const wash = $<HTMLElement>(".wash");
@@ -91,7 +92,8 @@ function buildPicker(races: Race[], cars: CarInfo[], choose: (race: Race) => voi
     if (!seasons.has(r.year)) seasons.set(r.year, []);
     seasons.get(r.year)!.push(r);
   }
-  const box = $<HTMLElement>(".picker__seasons");
+  // The same catalogue twice: on the page in the lobby, and in the picker once a race is chosen.
+  for (const box of $$(".seasons")) {
   box.style.setProperty("--seasons", String(seasons.size));
   box.replaceChildren();
   for (const [year, list] of seasons) {
@@ -114,7 +116,7 @@ function buildPicker(races: Race[], cars: CarInfo[], choose: (race: Race) => voi
       b.querySelector(".race__winner")!.innerHTML = `${race.winner.code}<span class="race__car"></span>`;
       b.querySelector(".race__car")!.textContent = info?.name ?? "";
       b.addEventListener("click", () => {
-        picker.close();
+        if (picker.open) picker.close();
         choose(race);
       });
       li.append(b);
@@ -122,7 +124,8 @@ function buildPicker(races: Race[], cars: CarInfo[], choose: (race: Race) => voi
     });
     box.append(col);
   }
-  $(".pick").addEventListener("click", () => {
+  }
+  for (const pick of $$(".pick")) pick.addEventListener("click", () => {
     picker.showModal();
     picker.querySelector<HTMLElement>('.race[aria-current="true"]')?.scrollIntoView({ block: "center" });
   });
@@ -139,10 +142,15 @@ async function main() {
     fetch("races.json").then((r) => (r.ok ? r.json() : { races: [] })).then((d) => d.races as Race[]),
   ]);
   const playable = races.filter((r) => r.car);
-  $<HTMLElement>('[data-bind="count"]').textContent = playable.length ? `${playable.length} races` : "";
-  const params = new URLSearchParams(location.search);
+  $$('[data-bind="count"]').forEach((el) => (el.textContent = playable.length ? `${playable.length} races` : ""));
+  const years = playable.map((r) => r.year);
+  if (years.length) $$('[data-bind="span"]').forEach((el) => (el.textContent = `${Math.min(...years)} – ${Math.max(...years)}`));
   const latest = [...playable].sort((a, b) => b.date.localeCompare(a.date))[0];
-  let race = playable.find((r) => r.id === params.get("race")) ?? playable.find((r) => r.id === "2024-sao-paulo") ?? latest;
+  // The race in the address (?race=...), or none: the page opens on every race, not one.
+  const fromUrl = () => playable.find((r) => r.id === new URLSearchParams(location.search).get("race")) ?? null;
+  let race: Race | null = fromUrl();
+  // Before a race is chosen, the newest car stands in shadow.
+  const lobbyCar = cars.find((c) => c.id === latest?.car);
 
   // Framing. Desktop: the car fills the right half, nose towards the camera's left.
   // Phone: the car takes the top half of the screen.
@@ -187,55 +195,146 @@ async function main() {
   };
   /** The wash: the new team's colour blooms out from the car over everything; at full cover the
    * grade changes underneath; then it fades, the team's name in script going with it. */
-  const washTo = (t: Theme) => {
+  let washing: gsap.core.Timeline | null = null;
+  const washTo = (t: Theme, swap: () => void) => {
     const at = isPhone() ? ["50%", "26%"] : ["72%", "55%"];
     const light = `color-mix(in srgb, ${t.accent} 70%, white)`;
     for (const [k, v] of Object.entries({ "--wx": at[0], "--wy": at[1], "--wash-a": light, "--wash-b": t.accent, "--wash-c": t.deep, "--wash-ink": t.onAccent })) {
       wash.style.setProperty(k, v);
     }
     washWord.textContent = t.label;
-    return gsap
+    // A pick made while a wash is still running replaces it: only the latest choice lands.
+    washing?.kill();
+    washing = gsap
       .timeline()
       .set(wash, { visibility: "visible", opacity: 1, clipPath: `circle(0% at ${at[0]} ${at[1]})` })
       .fromTo(washWord, { scale: 0.8, opacity: 0, xPercent: 6 }, { scale: 1, opacity: 1, xPercent: 0, duration: 0.7, ease: "power3.out" }, 0.1)
       .to(wash, { clipPath: `circle(150% at ${at[0]} ${at[1]})`, duration: 0.65, ease: "power3.in" }, 0)
       .fromTo(wash, { "--wash-shift": "0%" }, { "--wash-shift": "-12%", duration: 1.6, ease: "none" }, 0)
-      .add(() => applyTheme(t), 0.68)
+      .add(() => {
+        applyTheme(t);
+        swap();
+      }, 0.68)
       .to(washWord, { scale: 1.08, opacity: 0, duration: 0.5, ease: "power2.in" }, 1.05)
       .to(wash, { opacity: 0, duration: 0.6, ease: "power2.out" }, 1.15)
       .set(wash, { visibility: "hidden" });
+    return washing;
   };
 
-  /** Shows a race: its words at once; its car drives in once loaded (the old one drives off). */
+  /** Changes the page's grade, and its words under cover of the wash when the team changes. */
+  const regrade = (t: Theme, swap: () => void, instant: boolean) => {
+    if (instant || reduce || !theme) {
+      applyTheme(t);
+      swap();
+    } else if (t !== theme) washTo(t, swap);
+    else swap();
+  };
+
+  /** The page's two states: every race (the lobby), or one race (its winner, and the launch). */
+  const setMode = (mode: "lobby" | "race") => {
+    window.scrollTo({ top: 0 });
+    if (document.body.dataset.mode === mode) return;
+    document.body.dataset.mode = mode;
+    if (mode === "race") enableLaunch();
+    else disableLaunch();
+    ScrollTrigger.refresh();
+  };
+
+  /** The old car drives off to the left; the new one rolls in from the right and brakes. */
   let turn = 0;
-  const choose = async (next: Race, first = false) => {
-    const mine = ++turn;
-    race = next;
-    const info = cars.find((c) => c.id === next.car);
-    const nextTheme = themeFor(next.winner.team);
-    if (first || reduce || !theme) applyTheme(nextTheme);
-    else if (nextTheme !== theme) washTo(nextTheme);
-    bind(next, info, await hasRecording(next.id));
-    $$(".race").forEach((b) => b.setAttribute("aria-current", String(b.dataset.race === next.id)));
-    if (!first) {
-      history.replaceState(null, "", `?race=${next.id}`);
-      window.scrollTo({ top: 0 });
-    }
-    telemetry = Telemetry.from(next.rev);
+  const bringCar = async (info: CarInfo | undefined, dark: boolean, mine: number, first: boolean) => {
     if (info) preload(info);
     const leaving = car;
     const exit = leaving && !reduce ? gsap.to(shot, { entry: -16, duration: 0.75, ease: "power2.in" }) : null;
     const [arriving] = await Promise.all([loadCar(info), exit]);
-    if (mine !== turn) return; // another race was chosen meanwhile
+    if (mine !== turn) return; // something else was chosen meanwhile
     if (leaving) stage.scene.remove(leaving.root);
-    car = arriving;
+    car = dark ? silhouette(arriving) : arriving;
     stage.scene.add(car.root);
     $<HTMLElement>(".foot__model").textContent = car.credit;
-    console.info(`car: ${car.standIn ? "stand-in" : info?.id}, ${car.wheels.length} wheels`);
-    // The new car rolls in from the right and brakes into place.
     if (reduce) shot.entry = 0;
     else gsap.fromTo(shot, { entry: 16 }, { entry: 0, duration: first ? 1.4 : 1.7, ease: "power3.out" });
   };
+
+  /** Shows a race: the page becomes its winner's, and the pit wall will open on it. */
+  const choose = async (next: Race, first = false, push = true) => {
+    const mine = ++turn;
+    race = next;
+    const info = cars.find((c) => c.id === next.car);
+    const recorded = await hasRecording(next.id);
+    if (mine !== turn) return;
+    if (push && !first) history.pushState(null, "", `?race=${next.id}`);
+    if (recorded) {
+      try {
+        localStorage.setItem(CHOICE_KEY, JSON.stringify({ race: next.id, driver: next.winner.number }));
+      } catch {
+        /* private mode: the pit wall just won't remember it */
+      }
+    }
+    telemetry = Telemetry.from(next.rev);
+    regrade(
+      themeFor(next.winner.team),
+      () => {
+        bind(next, info, recorded);
+        setMode("race");
+      },
+      first,
+    );
+    $$(".race").forEach((b) => b.setAttribute("aria-current", String(b.dataset.race === next.id)));
+    await bringCar(info, false, mine, first);
+  };
+
+  /** The race chosen last time, offered again in the lobby. */
+  const showResume = () => {
+    const box = $<HTMLElement>(".resume");
+    let saved: Race | undefined;
+    try {
+      const id = JSON.parse(localStorage.getItem(CHOICE_KEY) ?? "null")?.race;
+      saved = playable.find((r) => r.id === id);
+    } catch {
+      saved = undefined;
+    }
+    box.hidden = !saved;
+    if (!saved) return;
+    const b = box.querySelector("button")!;
+    b.textContent = `${saved.year} ${saved.name.replace(/ Grand Prix$/, "")} · ${saved.winner.code}`;
+    b.onclick = () => void choose(saved);
+  };
+
+  /** Back to every race: the grade goes neutral and the newest car returns in shadow. */
+  const toLobby = async (first = false, push = true) => {
+    const mine = ++turn;
+    race = null;
+    telemetry = null;
+    if (push && !first) history.pushState(null, "", location.pathname);
+    regrade(
+      THEMES.neutral,
+      () => {
+        setMode("lobby");
+        $$('[data-bind="ghost"]').forEach((el) => (el.textContent = String(playable.length || "")));
+        $$('[data-bind-href="pitwall"]').forEach((a) => a.setAttribute("href", "pitwall/"));
+        document.title = "Pitwall · Every winner, every race";
+        showResume();
+      },
+      first,
+    );
+    $$(".race").forEach((b) => b.setAttribute("aria-current", "false"));
+    await bringCar(lobbyCar, true, mine, first);
+  };
+
+  // Home, the PITWALL mark and "All races" return to the lobby in place; so does the back button.
+  for (const a of $$('.back, .bar__mark, .bar__tabs a[href="./"]')) {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (race) void toLobby();
+      else window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+    });
+  }
+  window.addEventListener("popstate", () => {
+    const r = fromUrl();
+    if (r) void choose(r, false, false);
+    else void toLobby(false, false);
+  });
 
   // Speed streaks: thin light bars that stream past as the car goes, red and white.
   // Each streak fades in from its tail to a bright head, so it reads as light smeared by speed.
@@ -272,21 +371,34 @@ async function main() {
   }
   stage.scene.add(streaks);
 
-  // The scroll: pin the hero, then launch (squat, full revs) and roll across the page.
-  if (!reduce) {
-    const tl = gsap.timeline({
+  // The scroll, once a race is chosen: pin the hero, then launch (squat, full revs) and roll
+  // across the page. The lobby has no launch; its page simply scrolls on to the catalogue.
+  let launch: gsap.core.Timeline | null = null;
+  function enableLaunch() {
+    if (reduce || launch) return;
+    launch = gsap.timeline({
       scrollTrigger: { trigger: hero, start: "top top", end: "+=240%", pin: true, scrub: 0.6 },
     });
-    tl.to(shot, { launch: 1, duration: 0.18, ease: "power2.in" }, 0)
-      .to(".hero__copy", { xPercent: -40, opacity: 0, duration: 0.22, ease: "power2.in" }, 0.08)
+    launch
+      .to(shot, { launch: 1, duration: 0.18, ease: "power2.in" }, 0)
+      .to(".hero__copy--race", { xPercent: -40, opacity: 0, duration: 0.22, ease: "power2.in" }, 0.08)
       .to(".hero__ghost", { xPercent: -30, opacity: 0, duration: 0.3, ease: "power1.in" }, 0.1)
       .to(shot, { yaw: 0, duration: 0.3, ease: "power2.inOut" }, 0.18)
       .to(shot, { roll: 1, duration: 0.82, ease: "power2.in" }, 0.18)
       .to(".rev", { opacity: 0, duration: 0.1 }, 0.9);
   }
+  function disableLaunch() {
+    if (!launch) return;
+    launch.scrollTrigger?.kill(true);
+    launch.progress(0).kill();
+    launch = null;
+    Object.assign(shot, { launch: 0, roll: 0 }, home());
+    gsap.set([".hero__copy--race", ".hero__ghost", ".rev"], { clearProps: "transform,opacity" });
+  }
 
   buildPicker(playable, cars, (r) => void choose(r));
   if (race) await choose(race, true);
+  else await toLobby(true);
 
   const timer = new THREE.Timer();
   timer.connect(document);
@@ -340,7 +452,9 @@ async function main() {
     const exit = isPhone() ? -14 : -19;
     const x = base.x + (exit - base.x) * shot.roll + shot.entry;
     car.root.position.x = x;
-    car.root.rotation.y = shot.launch === 0 && shot.roll === 0 ? base.yaw : shot.yaw;
+    // In the lobby the car in shadow turns a little, slowly, so the light runs along its bodywork.
+    const sway = race || reduce ? 0 : Math.sin(t * 0.35) * 0.12;
+    car.root.rotation.y = shot.launch === 0 && shot.roll === 0 ? base.yaw + sway : shot.yaw;
     distance += Math.abs(x - lastX);
     lastX = x;
     for (const w of car.wheels) w.rotation.z = distance / 0.36;

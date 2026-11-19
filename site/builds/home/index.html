@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,300..900;1,62..125,300..900&family=JetBrains+Mono:wght@400;600;700&family=Mr+Dafoe&display=swap">
 </head>
-<body>
+<body data-mode="lobby">
   <!-- The 3D stage: fixed behind everything. -->
   <canvas class="stage" aria-hidden="true"></canvas>
 
@@ -29,16 +29,34 @@
          uncovering the winner's title card. -->
     <section class="hero" aria-label="The race winner's car">
       <div class="hero__scene-space" aria-hidden="true"></div>
-      <div class="hero__ghost" aria-hidden="true" data-bind="ghost">RB20</div>
-      <div class="hero__copy">
-        <p class="kicker" data-bind="kicker">2024 São Paulo Grand Prix · Interlagos</p>
+      <div class="hero__ghost" aria-hidden="true" data-bind="ghost"></div>
+
+      <!-- Before a race is chosen: the site itself, a car in shadow, and the way in. -->
+      <div class="hero__copy hero__copy--lobby">
+        <p class="kicker"><span data-bind="span">2023 – 2026</span> · Every Grand Prix · Real timing data</p>
         <h1 class="title">
-          <span class="title__script" data-bind="first">Max</span>
-          <span class="title__bold" data-bind="last">VERSTAPPEN</span>
+          <span class="title__script">Every</span>
+          <span class="title__bold">WINNER.</span>
         </h1>
-        <p class="hero__sub" data-bind="sub">Won from seventeenth on the grid, 19.477 s clear.</p>
+        <p class="hero__sub">Pick a Grand Prix. Its winning car rolls out of the dark and revs to its driver's real launch telemetry, then the pit wall replays the whole race, lap by lap.</p>
         <button class="pick" type="button" aria-haspopup="dialog">
           <span class="pick__label">Choose a race</span>
+          <span class="pick__count" data-bind="count"></span>
+        </button>
+        <p class="resume" hidden>Last time: <button type="button" class="resume__race"></button></p>
+      </div>
+
+      <!-- A race chosen: its winner. -->
+      <div class="hero__copy hero__copy--race">
+        <a class="back" href="./">All races</a>
+        <p class="kicker" data-bind="kicker"></p>
+        <h2 class="title">
+          <span class="title__script" data-bind="first"></span>
+          <span class="title__bold title__bold--name" data-bind="last"></span>
+        </h2>
+        <p class="hero__sub" data-bind="sub"></p>
+        <button class="pick" type="button" aria-haspopup="dialog">
+          <span class="pick__label">Another race</span>
           <span class="pick__count" data-bind="count"></span>
         </button>
       </div>
@@ -49,24 +67,24 @@
           <span class="rev__speed"><b class="rev__s">0</b> km/h</span>
         </div>
         <div class="rev__bar"><span class="rev__fill"></span></div>
-        <p class="rev__src" data-bind="revsrc">Car 1, real telemetry: the grid, then the launch.</p>
+        <p class="rev__src" data-bind="revsrc"></p>
       </div>
-      <span class="corner corner--tl" aria-hidden="true" data-bind="number">1</span>
-      <span class="corner corner--br" aria-hidden="true" data-bind="number">1</span>
+      <span class="corner corner--tl" aria-hidden="true" data-bind="number"></span>
+      <span class="corner corner--br" aria-hidden="true" data-bind="number"></span>
 
       <!-- The page the car rolls over: the winner's title card, revealed behind the car as it
            passes (main.ts drives --reveal). -->
       <div class="card" aria-label="The winner">
-        <div class="card__ghost" aria-hidden="true" data-bind="last">VERSTAPPEN</div>
+        <div class="card__ghost" aria-hidden="true" data-bind="last"></div>
         <div class="card__body">
-          <p class="card__team" data-bind="teamcar">Red Bull Racing · RB20</p>
-          <h2 class="card__name"><span class="card__first" data-bind="first">Max</span><span class="card__last" data-bind="last">VERSTAPPEN</span></h2>
+          <p class="card__team" data-bind="teamcar"></p>
+          <h2 class="card__name"><span class="card__first" data-bind="first"></span><span class="card__last" data-bind="last"></span></h2>
           <dl class="card__facts">
-            <div><dt>Grid</dt><dd data-bind="grid">17</dd></div>
+            <div><dt>Grid</dt><dd data-bind="grid"></dd></div>
             <div><dt>Finish</dt><dd>1</dd></div>
-            <div><dt>Winning margin</dt><dd data-bind="margin">19.477<small>s</small></dd></div>
-            <div><dt>Best lap</dt><dd data-bind="best">1:20.472</dd></div>
-            <div><dt>Pit stops</dt><dd data-bind="pits">1</dd></div>
+            <div><dt>Winning margin</dt><dd data-bind="margin"></dd></div>
+            <div><dt>Best lap</dt><dd data-bind="best"></dd></div>
+            <div><dt>Pit stops</dt><dd data-bind="pits"></dd></div>
           </dl>
           <p class="card__actions">
             <a class="cta" href="pitwall/" data-bind-href="pitwall">Open the pit wall</a>
@@ -74,9 +92,18 @@
           </p>
           <p class="card__note" data-bind="note"></p>
         </div>
-        <span class="corner corner--tr" aria-hidden="true" data-bind="number">1</span>
-        <span class="corner corner--bl" aria-hidden="true" data-bind="number">1</span>
+        <span class="corner corner--tr" aria-hidden="true" data-bind="number"></span>
+        <span class="corner corner--bl" aria-hidden="true" data-bind="number"></span>
       </div>
+    </section>
+
+    <!-- Before a race is chosen, the whole catalogue is on the page under the car. -->
+    <section class="catalogue" aria-labelledby="catalogue-title">
+      <header class="catalogue__head">
+        <h2 id="catalogue-title" class="catalogue__title"><span class="catalogue__script">Choose</span> A RACE.</h2>
+        <p class="catalogue__sub"><span data-bind="count"></span>, each won by one car. Pick one and the page becomes that race: its winner, its team's colours, its launch, and its replay on the pit wall.</p>
+      </header>
+      <div class="catalogue__seasons seasons"></div>
     </section>
   </main>
 
@@ -89,7 +116,7 @@
       <h2 id="picker-title" class="picker__title"><span class="picker__script">Choose</span> A RACE</h2>
       <button class="picker__close" type="button" aria-label="Close">Close</button>
     </div>
-    <div class="picker__seasons"></div>
+    <div class="picker__seasons seasons"></div>
   </dialog>
 
   <footer class="foot">

@@ -280,3 +280,16 @@ export async function loadCar(info: CarInfo | undefined): Promise<Car> {
     return standIn();
   }
 }
+
+/**
+ * The car before a race is chosen: no livery, no team. Every panel becomes the same deep gloss
+ * black, so only the studio's light strips and the rim light draw its shape. Swaps this copy's
+ * materials only; the loaded model and other cars keep theirs.
+ */
+const SHADOW = new THREE.MeshPhysicalMaterial({ color: 0x08080a, metalness: 0.75, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.12 });
+export function silhouette(car: Car): Car {
+  car.root.traverse((o) => {
+    if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = SHADOW;
+  });
+  return car;
+}

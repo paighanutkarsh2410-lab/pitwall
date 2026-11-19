@@ -182,10 +182,11 @@ main { position: relative; z-index: 2; }
 .picker__close { background: none; border: 1px solid rgb(244 243 241 / 0.3); color: var(--ink); padding: 0.55rem 1rem; cursor: pointer;
   font: 700 0.75rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
 .picker__close:hover { border-color: var(--ink); }
-.picker__seasons { display: grid; grid-template-columns: repeat(var(--seasons, 4), minmax(14rem, 1fr)); overflow: auto; }
+.seasons { display: grid; grid-template-columns: repeat(var(--seasons, 4), minmax(14rem, 1fr)); }
+.picker__seasons { overflow: auto; }
 .season { border-right: 1px solid rgb(244 243 241 / 0.08); }
 .season:last-child { border-right: 0; }
-.season__year { position: sticky; top: 0; z-index: 1; margin: 0; padding: 1rem 1.25rem 0.75rem; background: rgb(10 10 12 / 0.98);
+.season__year { position: sticky; top: 0; z-index: 1; margin: 0; padding: 1rem 1.25rem 0.75rem; background: var(--season-bg, rgb(10 10 12 / 0.98));
   font: 900 1.6rem/1 var(--display); font-variation-settings: "wdth" 125; letter-spacing: -0.02em; }
 .season__year small { font: 500 0.7rem/1 var(--mono); color: var(--ink-soft); letter-spacing: 0.08em; margin-left: 0.5rem; }
 .season__list { list-style: none; margin: 0; padding: 0 0 1rem; }
@@ -220,7 +221,8 @@ main { position: relative; z-index: 2; }
   .hero__sub { font-size: 0.95rem; }
   .card__facts { grid-template-columns: repeat(2, minmax(0, auto)); gap: 1rem 2rem; }
   .picker { width: 100vw; max-height: 100vh; height: 100vh; }
-  .picker__seasons { grid-template-columns: 1fr; }
+  .seasons { grid-template-columns: 1fr; }
+  .catalogue .season__year { top: var(--bar-h); }
   .picker__head { padding: 1rem; }
   .pick { margin-top: 1.2rem; }
   .card__ghost { font-size: 34vw; }
@@ -259,4 +261,43 @@ main { position: relative; z-index: 2; }
   position: relative; margin: 0; font-family: var(--script); font-size: clamp(5rem, 2rem + 14vw, 16rem);
   color: var(--wash-ink); line-height: 1; transform: rotate(-6deg); white-space: nowrap;
   text-shadow: 0 10px 40px rgb(0 0 0 / 0.25);
+}
+
+/* ------------------------------------------------ the lobby and a race -- */
+/* Before a race is chosen (data-mode="lobby") the page is the site's own: the newest car in
+   shadow, the way in, and every race under it. Choosing one (data-mode="race") turns it into that
+   race: its winner, the launch on scroll and the title card. main.ts switches the mode. */
+body[data-mode="lobby"] :is(.hero__copy--race, .rev, .corner, .card) { display: none; }
+body[data-mode="race"] :is(.hero__copy--lobby, .catalogue) { display: none; }
+.hero__copy--lobby .title__bold { --name-chars: 7; }
+.hero__copy--lobby .title__script { color: var(--ink); }
+.hero__copy--lobby .hero__sub { max-width: 34ch; }
+body[data-mode="lobby"] .hero__ghost { -webkit-text-stroke-color: rgb(244 243 241 / 0.07); }
+
+.resume { margin: 1.1rem 0 0; font: 500 0.75rem/1.4 var(--mono); letter-spacing: 0.06em; color: var(--ink-soft); text-transform: uppercase; }
+.resume__race {
+  background: none; border: 0; padding: 0; color: var(--ink); cursor: pointer; font: inherit; letter-spacing: inherit;
+  text-decoration: underline; text-underline-offset: 0.3em; text-decoration-color: var(--accent);
+}
+.resume__race:hover { color: var(--accent); }
+
+.back {
+  display: inline-flex; align-items: center; gap: 0.55rem; margin: 0 0 1.4rem;
+  font: 700 0.72rem/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none;
+}
+.back::before { content: ""; width: 0.9rem; height: 1px; background: currentColor; box-shadow: -1px 0 0 currentColor; }
+.back:hover { color: var(--ink); }
+
+.catalogue {
+  position: relative; z-index: 3; padding: 5rem 0 2rem;
+  background: linear-gradient(to bottom, transparent, rgb(7 7 8 / 0.92) 6rem, var(--black) 14rem);
+  --season-bg: rgb(7 7 8 / 0.97);
+}
+.catalogue__head { padding: 0 var(--gutter) 2.5rem; display: grid; grid-template-columns: auto 1fr; gap: 1rem 4rem; align-items: end; }
+.catalogue__title { margin: 0; font-weight: 900; font-variation-settings: "wdth" 125; font-size: clamp(2.6rem, 1.6rem + 4vw, 5.5rem); letter-spacing: -0.035em; line-height: 0.9; }
+.catalogue__script { display: block; font-family: var(--script); font-weight: 400; color: var(--accent); font-size: 0.75em; letter-spacing: 0; transform: rotate(-4deg); transform-origin: left bottom; margin-left: 0.1em; }
+.catalogue__sub { margin: 0; max-width: 46ch; color: var(--ink-soft); }
+.catalogue .seasons { border-top: 2px solid var(--accent); }
+@media (max-width: 860px) {
+  .catalogue__head { grid-template-columns: 1fr; }
 }

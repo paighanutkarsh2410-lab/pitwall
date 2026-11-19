@@ -20,6 +20,12 @@ export interface Theme {
 }
 
 export const THEMES: Record<string, Theme> = {
+  // Before a race is chosen: no team. A graphite studio, cold white light, the site's own red.
+  neutral: {
+    key: "neutral", label: "Every race", accent: "#e10600", mid: "#3a3c42", deep: "#16171b",
+    onAccent: "#ffffff", ctaBg: "#ffffff", ctaInk: "#120202", script: "#e10600", haze: "#2a3242",
+    glow: 0x2c3038, rim: 0xd8e2ff, streak: 0xf4f3f1,
+  },
   redbull: {
     key: "redbull", label: "Red Bull", accent: "#e10600", mid: "#b80500", deep: "#7a0400",
     onAccent: "#ffffff", ctaBg: "#ffffff", ctaInk: "#120202", script: "#e10600", haze: "#1c2a78",

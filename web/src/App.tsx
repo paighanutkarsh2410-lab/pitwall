@@ -10,7 +10,7 @@ import { TrackMap } from "./components/TrackMap";
 import { onColour, raceClock, teamColour, TRACK_STATUS } from "./format";
 import { teamCars, teams } from "./strategy";
 import type { Replay } from "./types";
-import { DRIVER, RECORDING, type Playback } from "./recording";
+import { DRIVER, RACE, RECORDING, type Playback } from "./recording";
 import { useLive } from "./useLive";
 
 const TEAM_KEY = "pitwall.team";
@@ -95,7 +95,7 @@ export function App() {
     setWatch(watchKey ? watchKey.split(",").map(Number) : []);
   }, [watchKey]);
 
-  const accent = ours[0] ? teamColour(ours[0].colour) : "#e8ff4a";
+  const accent = ours[0] ? teamColour(ours[0].colour) : RECORDING ? "#e10600" : "#e8ff4a";
   const status = TRACK_STATUS[board?.track ?? "PRE_RACE"] ?? TRACK_STATUS.PRE_RACE;
   const playing = ["playing", "downloading", "starting"].includes(replay.state);
 
@@ -115,7 +115,7 @@ export function App() {
         </div>
         {RECORDING && (
           <nav className="site-tabs" aria-label="Site">
-            <a href="../">Race</a>
+            <a href="../">Home</a>
             <a href="./" aria-current="page">
               Pit wall
             </a>
@@ -133,8 +133,18 @@ export function App() {
           </select>
         </label>
         <div className="race">
-          <h1>{board?.session?.name ?? "No race running"}</h1>
-          <span className="dim small">{board?.session ? `${board.session.circuit} · ${board.session.year} · Race` : "Open the race library to start one"}</span>
+          <h1>{board?.session?.name ?? (RECORDING && !RACE ? "No race chosen" : "No race running")}</h1>
+          <span className="dim small">
+            {board?.session ? `${board.session.circuit} · ${board.session.year} · Race` : RECORDING ? "Choose a race on the home page" : "Open the race library to start one"}
+            {RECORDING && board?.session && (
+              <>
+                {" · "}
+                <a className="change-race" href={`../?race=${RACE}`}>
+                  Change race
+                </a>
+              </>
+            )}
+          </span>
         </div>
         {board && (
           <div className="race-state">
@@ -160,7 +170,7 @@ export function App() {
             </span>
           </div>
         )}
-        {RECORDING && live.playback ? (
+        {RECORDING && !RACE ? null : RECORDING && live.playback ? (
           <RecordingControls playback={live.playback} />
         ) : (
         <div className="transport">
@@ -198,7 +208,12 @@ export function App() {
         </main>
       ) : (
         <main className="waiting">
-          <p>{RECORDING ? "Loading the recording…" : live.connected ? "No race on the wall yet." : "Connecting to the pit wall…"}</p>
+          <p>{RECORDING ? (RACE ? "Loading the recording…" : "No race chosen yet.") : live.connected ? "No race on the wall yet." : "Connecting to the pit wall…"}</p>
+          {RECORDING && !RACE && (
+            <a className="primary choose-race" href="../">
+              Choose a race
+            </a>
+          )}
           {live.connected && !RECORDING && (
             <button className="primary" onClick={() => setLibrary(true)}>
               Open the race library

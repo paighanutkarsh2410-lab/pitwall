@@ -11,10 +11,34 @@ import type { Board, Sample, Strategy, Trace, Track } from "./types";
  */
 export const RECORDING = import.meta.env.VITE_PITWALL_SOURCE === "recording";
 const params = new URLSearchParams(location.search);
-/** The race to play: ?race=2025-silverstone (the home page links here with it). */
-export const RACE = /^\d{4}-[a-z0-9-]+$/.test(params.get("race") ?? "") ? params.get("race")! : "2024-sao-paulo";
-/** The driver to follow, if the home page named one: ?driver=4. */
-export const DRIVER = Number(params.get("driver")) || null;
+/**
+ * The race to play and the driver to follow: ?race=2025-silverstone&driver=4 (the home page links
+ * here with both). Without them, the race last chosen on the home page; without that, none, and
+ * the screen asks for one. The choice is remembered across the site's pages.
+ */
+export const CHOICE_KEY = "pitwall.choice";
+function chosen(): { race: string | null; driver: number | null } {
+  const race = params.get("race") ?? "";
+  if (/^\d{4}-[a-z0-9-]+$/.test(race)) {
+    const driver = Number(params.get("driver")) || null;
+    try {
+      localStorage.setItem(CHOICE_KEY, JSON.stringify({ race, driver }));
+    } catch {
+      /* private mode: not remembered */
+    }
+    return { race, driver };
+  }
+  try {
+    const saved = JSON.parse(localStorage.getItem(CHOICE_KEY) ?? "null");
+    if (saved && /^\d{4}-[a-z0-9-]+$/.test(saved.race)) return { race: saved.race, driver: Number(saved.driver) || null };
+  } catch {
+    /* nothing saved */
+  }
+  return { race: null, driver: null };
+}
+const CHOSEN = chosen();
+export const RACE = CHOSEN.race;
+export const DRIVER = CHOSEN.driver;
 const DATA = () => new URL(`../data/${RACE}/`, document.baseURI).href;
 
 /** Chunks are stored gzipped (a static host counts stored size); the browser unpacks them. */
@@ -102,6 +126,7 @@ export function useRecording(watch: number[]): RecordedLive {
   const state = useRef({ playing: true, speed: 1 });
 
   useEffect(() => {
+    if (!RACE) return; // no race chosen: the screen asks for one
     fetch(`${DATA()}manifest.json`)
       .then((r) => r.json())
       .then((m: Manifest) => {
