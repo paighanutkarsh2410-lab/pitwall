@@ -87,6 +87,23 @@ kubectl -n pitwall get analysisruns
 
 Then `git revert` the commit.
 
+## What a canary costs
+
+A canary limits the damage of a bad release; it doesn't remove it. While the slow ingest canary
+was being analysed, the events on its partitions really were late (telemetry p99 peaked at
+4.9 s) for about two minutes. After the three drills the freshness SLOs showed it: 3% of
+telemetry and 2.4% of board updates late over six hours, enough to spend their three-day error
+budgets (together with the previous day's alerting drill), and to open their *ticket* alerts,
+the slow-burn kind. No page fired: the burn was short.
+
+Ways to make a canary cheaper, at a price:
+
+| Lever | Gain | Cost |
+|---|---|---|
+| Check sooner (shorter `initialDelay`, `interval`) | Bad releases caught faster | Noisier verdicts from less data |
+| A smaller share (more stable replicas) | Fewer events exposed | More pods on a laptop |
+| A shadow canary (the canary's output not shown) | No user impact at all | It no longer proves the release under real exposure |
+
 ## Found by running it
 
 - **The first comparison had nothing to compare.** During the release that introduced producer
