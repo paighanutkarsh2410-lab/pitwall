@@ -1,0 +1,150 @@
+/* The pit wall in the site's broadcast style: the home page's black, cold white and team accent,
+   its fonts (Archivo, JetBrains Mono, Mr Dafoe), square edges and slanted marks. Loaded after
+   styles.css, which keeps the layout and the data's own colours (sectors, tyres, flags). */
+
+:root {
+  --bg: #070708;
+  --panel: rgb(14 14 16 / 0.94);
+  --panel-2: #16161a;
+  --panel-3: #1d1d22;
+  --line: rgb(244 243 241 / 0.08);
+  --line-2: rgb(244 243 241 / 0.16);
+  --fg: #f4f3f1;
+  --muted: #a7a9ae;
+  --faint: #6c6f76;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --display: "Archivo", system-ui, sans-serif;
+  --script: "Mr Dafoe", "Brush Script MT", cursive;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+html,
+body {
+  font-family: var(--display);
+  font-size: 13px;
+  background:
+    radial-gradient(70vw 60vh at 85% -10%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%),
+    radial-gradient(60vw 50vh at 0% 110%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+  transition: background-color 400ms var(--ease-out);
+}
+::selection { background: var(--accent); color: var(--on-accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { gap: 10px; padding: 0 12px 10px; }
+
+/* ---- The header: the home page's graphics bar ----------------------------------------- */
+.top {
+  margin: 0 -12px;
+  padding: 0 16px 0 0;
+  gap: 22px;
+  min-height: 56px;
+  border: 0;
+  border-bottom: 2px solid var(--accent);
+  border-radius: 0;
+  background: linear-gradient(to bottom, rgb(7 7 8 / 0.96), rgb(12 12 14 / 0.9));
+}
+.brand {
+  align-self: stretch;
+  padding: 0 2rem 0 1.25rem;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 15px;
+  font-weight: 900;
+  font-style: italic;
+  font-variation-settings: "wdth" 125;
+  letter-spacing: 0.02em;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 1rem) 100%, 0 100%);
+}
+.brand .mark { display: none; }
+.site-tabs { gap: 0; align-self: stretch; }
+.site-tabs a {
+  display: flex; align-items: center; padding: 0 0.9rem; border-radius: 0; opacity: 1;
+  color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+  border-bottom: 2px solid transparent; margin-bottom: -2px;
+}
+.site-tabs a[aria-current="page"] { color: var(--fg); box-shadow: none; border-bottom-color: var(--fg); }
+.site-tabs a:hover { color: var(--fg); }
+.race h1 {
+  font-size: 19px;
+  font-weight: 900;
+  font-variation-settings: "wdth" 118;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+.race .small { font-family: var(--mono); letter-spacing: 0.06em; text-transform: uppercase; font-size: 10.5px; }
+.lap-count .mono { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
+.lap-count .small { font-family: var(--mono); letter-spacing: 0.14em; }
+.status { border-radius: 0; font-family: var(--mono); letter-spacing: 0.1em; font-size: 11px; }
+.weather { font-family: var(--mono); letter-spacing: 0.04em; }
+.clock { font-size: 15px; }
+.team-pick select, .library select { border-radius: 0; background: var(--panel-2); }
+.team-pick .small { font-family: var(--mono); letter-spacing: 0.12em; text-transform: uppercase; font-size: 10px; }
+
+/* ---- Buttons and toggles: square, broadcast-tight ------------------------------------------ */
+.toggle { border-radius: 0; border-color: var(--line-2); }
+.toggle button { font-family: var(--mono); font-size: 11px; transition: background-color 140ms var(--ease-out), color 140ms var(--ease-out); }
+.toggle button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.transport > button, button.primary {
+  border-radius: 0;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 11px;
+  font-variation-settings: "wdth" 112;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 0.5rem) 100%, 0 100%);
+  padding-right: 1.4rem;
+}
+.replay-state { font-family: var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+
+/* ---- Panels --------------------------------------------------------------------------------- */
+.panel {
+  border-radius: 0;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.04);
+  backdrop-filter: blur(6px);
+}
+.panel-head { background: transparent; border-bottom: 1px solid var(--line); padding: 8px 12px; }
+.panel-head h2 {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--fg);
+  font-size: 11.5px;
+  font-weight: 800;
+  font-variation-settings: "wdth" 120;
+  letter-spacing: 0.14em;
+}
+.panel-head h2::before { content: ""; width: 7px; height: 7px; background: var(--accent); transform: rotate(45deg); flex: none; }
+
+/* ---- Timing ------------------------------------------------------------------------------------ */
+.timing th { font-family: var(--mono); letter-spacing: 0.1em; font-size: 10px; color: var(--faint); }
+.timing td { font-family: var(--display); }
+.timing .num, .timing td.num { font-family: var(--mono); }
+.timing tbody tr { transition: background-color 120ms var(--ease-out); }
+.timing tbody tr:nth-child(even) { background: rgb(255 255 255 / 0.018); }
+.timing tr.ours { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.code { font-weight: 800; font-variation-settings: "wdth" 110; letter-spacing: 0.04em; }
+.pos { font-family: var(--mono); font-weight: 700; }
+
+/* ---- The team's cars: a title card each ---------------------------------------------------- */
+.car-card { border-left-width: 5px; }
+.car-card header {
+  padding: 10px 14px;
+  background:
+    repeating-linear-gradient(115deg, rgb(255 255 255 / 0.04) 0 2px, transparent 2px 16px),
+    linear-gradient(100deg, color-mix(in srgb, var(--team) 34%, var(--panel)), var(--panel) 75%);
+}
+.big-pos { font-size: 42px; font-weight: 900; font-variation-settings: "wdth" 110; letter-spacing: -0.04em; }
+.car-card h2 { font-size: 17px; font-weight: 900; font-variation-settings: "wdth" 118; letter-spacing: -0.005em; }
+.car-card p { font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; }
+.around .mono, .stats .mono { font-size: 15px; }
+.box-call { border-radius: 0; }
+
+/* ---- The rest ------------------------------------------------------------------------------- */
+.race-control li { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.02em; }
+.flag, .tag, .drs-chip { border-radius: 0; }
+.legend, .note { font-family: var(--mono); }
+.waiting p { font-family: var(--script); font-size: 3rem; color: var(--accent); }
+.foot { font-size: 11px; }
+.overlay { backdrop-filter: blur(8px); }
