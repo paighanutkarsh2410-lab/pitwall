@@ -295,7 +295,7 @@ def race_health() -> dict:
     L.add(
         stat(
             "Link",
-            "min(pitwall_uplink_link_up)",
+            'max(pitwall_uplink_link_up{app_kubernetes_io_name="uplink"})',
             "short",
             steps((None, "red"), (1, "green")),
             decimals=0,
@@ -357,7 +357,7 @@ def race_health() -> dict:
             "Waiting at the track (backlog)",
             [
                 target(
-                    "max(pitwall_uplink_backlog_messages)",
+                    'max(pitwall_uplink_backlog_messages{app_kubernetes_io_name="uplink"})',
                     "events not yet confirmed by the factory",
                 )
             ],

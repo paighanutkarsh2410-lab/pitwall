@@ -1120,7 +1120,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "min(pitwall_uplink_link_up)",
+          "expr": "max(pitwall_uplink_link_up{app_kubernetes_io_name=\"uplink\"})",
           "legendFormat": "",
           "refId": "A"
         }
@@ -1392,7 +1392,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(pitwall_uplink_backlog_messages)",
+          "expr": "max(pitwall_uplink_backlog_messages{app_kubernetes_io_name=\"uplink\"})",
           "legendFormat": "events not yet confirmed by the factory",
           "refId": "A"
         }
