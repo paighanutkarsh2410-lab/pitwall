@@ -1,13 +1,16 @@
 import { lapTime, teamColour, TYRES } from "../format";
+import { DRIVER } from "../recording";
 import { neighbours, rejoin } from "../strategy";
 import type { Board, BoardCar, Strategy } from "../types";
 
 /** One card per team car: where it is, who is around it, its pace, and the pit call. */
 export function TeamCars({ board, cars, strategy }: { board: Board; cars: BoardCar[]; strategy: Strategy | null }) {
   if (cars.length === 0) return null;
+  // On a recording opened for one driver (?driver=), that driver's card leads; the rest keep order.
+  const ordered = DRIVER == null ? cars : [...cars].sort((a, b) => Number(b.car === DRIVER) - Number(a.car === DRIVER));
   return (
     <div className="team-cars">
-      {cars.map((c) => (
+      {ordered.map((c) => (
         <CarCard key={c.car} board={board} car={c} strategy={strategy} />
       ))}
     </div>
