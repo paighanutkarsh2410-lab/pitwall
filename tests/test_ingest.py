@@ -34,5 +34,17 @@ def test_routing_keys_and_run_headers():
     assert bus.run_of(None) is None
 
 
+def test_cars_spread_evenly_over_the_partitions():
+    from collections import Counter
+
+    grid = [1, 4, 10, 11, 14, 16, 18, 22, 23, 24, 27, 30, 31, 43, 44, 50, 55, 63, 77, 81]
+    partitions = list(range(6))
+    spread = Counter(bus.by_car(str(c).encode(), partitions, partitions) for c in grid)
+    spread[bus.by_car(b"race", partitions, partitions)] += 1
+    assert sorted(spread) == partitions  # no partition left empty
+    assert max(spread.values()) - min(spread.values()) <= 1
+    assert bus.by_car(b"44", partitions, partitions) == 2  # always the same one for a car
+
+
 def test_every_event_type_has_a_route():
     assert set(bus.ROUTES) == set(EVENT_TYPES)

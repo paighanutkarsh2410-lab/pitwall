@@ -52,6 +52,7 @@ def target_producer():
 
     return AIOKafkaProducer(
         bootstrap_servers=TARGET,
+        partitioner=bus.by_car,  # the same partition at the factory as at the track
         acks="all",
         enable_idempotence=True,
         linger_ms=20,

@@ -116,11 +116,29 @@ def brokers() -> str:
     return os.environ.get("PITWALL_BROKERS", "localhost:9092")
 
 
+def by_car(key: bytes | None, all_partitions: list[int], available: list[int]) -> int:
+    """Which partition a key goes to: a car's number modulo the partitions; race-wide events
+    to the first.
+
+    Kafka's default (murmur2 of the key) spreads 21 keys badly over six partitions: for the
+    2024 grid it put 6, 7, 0, 4, 2 and 2 keys on them, so one partition never got an event and
+    an ingest pod given it had nothing to do. Car numbers modulo six give 4, 4, 3, 3, 4, 3.
+    Every producer uses this, so a car's events stay together on every hop.
+    """
+    partitions = sorted(all_partitions)
+    try:
+        index = int(key or b"")
+    except ValueError:
+        index = 0  # "race", or anything else not a car
+    return partitions[index % len(partitions)]
+
+
 def producer(**options):
     from aiokafka import AIOKafkaProducer
 
     return AIOKafkaProducer(
         bootstrap_servers=brokers(),
+        partitioner=options.pop("partitioner", by_car),
         linger_ms=options.pop("linger_ms", 10),
         acks=options.pop("acks", "all"),
         enable_idempotence=options.pop("enable_idempotence", True),
