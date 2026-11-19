@@ -52,7 +52,7 @@ automatically; then the trackside link is cut for 60 seconds and not one data po
 *Done when* a slow point on a dashboard leads to its trace, and an injected delay fires the
 right alert.
 
-## Phase 3: Self-healing deploys
+## Phase 3: Self-healing deploys ✅
 
 - Argo Rollouts canaries for every service, analysed against the SLO metrics
 - Canaries for stream consumers: canary pods join the consumer group, take a share of the
