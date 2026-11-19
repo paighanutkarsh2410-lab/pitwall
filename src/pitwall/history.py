@@ -11,7 +11,7 @@ import logging
 import os
 import time
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 log = logging.getLogger("pitwall.history")
@@ -80,7 +80,6 @@ async def migrate(pool) -> None:
 class Batch:
     telemetry: list[tuple]
     laps: list[tuple]
-    offsets: dict = field(default_factory=dict)  # where the source has been read up to
 
     @property
     def rows(self) -> int:
@@ -93,9 +92,14 @@ class Recorder:
 
     The GameDay's slow-disk experiment found it did: ingest wrote history inline, each write
     took 2.5 s, and the pit wall fell 30 s behind. Now ingest hands batches over and carries
-    on. ``durable`` tells it how far the source has been read *and* stored, which is as far as
-    it may commit. If the database falls more than ``max_backlog`` rows behind, the oldest
-    waiting batches are given up on and counted: history has a gap, live timing doesn't.
+    on. History is a side output, so ingest's commits don't wait for it either: holding them
+    back until rows were stored (tried first) made KEDA read the history backlog as consumer
+    lag, scale ingest up, and the rebalance re-read and re-sent 7,500 events.
+
+    The price: rows still waiting when ingest crashes are lost (on a clean shutdown it drains
+    for a few seconds first). If the database falls more than ``max_backlog`` rows behind, the
+    oldest waiting batches are given up on. Both are counted: history has a gap, live timing
+    doesn't.
     """
 
     def __init__(
@@ -118,7 +122,6 @@ class Recorder:
         self.written = 0
         self.dropped = 0
         self.queue: deque[Batch] = deque()
-        self.durable: dict = {}
         self.wake = asyncio.Event()
 
     def add(self, run: str, event: dict) -> None:
@@ -169,25 +172,19 @@ class Recorder:
             pending and time.monotonic() - self.last_flush >= self.every
         )
 
-    def hand_off(self, offsets: dict) -> int:
-        """Queues what is buffered for the writer, with how far the source has been read.
-        Returns how many rows were given up on to keep the backlog bounded."""
-        batch = Batch(self.telemetry, self.laps, dict(offsets))
+    def hand_off(self) -> int:
+        """Queues what is buffered for the writer. Returns how many rows were given up on to
+        keep the backlog bounded."""
+        batch = Batch(self.telemetry, self.laps)
         self.telemetry, self.laps = [], []
         self.last_flush = time.monotonic()
         if batch.rows:
             self.queue.append(batch)
-        elif self.queue:
-            self.queue[-1].offsets.update(batch.offsets)
-        else:
-            self.durable.update(batch.offsets)  # nothing to store: read is as good as stored
         dropped = 0
         # Never the first batch: the writer may be in the middle of it.
-        while self.backlog() > self.max_backlog and len(self.queue) > 2:
-            gone = self.queue[1]
+        while self.backlog() > self.max_backlog and len(self.queue) > 1:
+            dropped += self.queue[1].rows
             del self.queue[1]
-            self.queue[0].offsets.update(gone.offsets)  # stored or not, it's been dealt with
-            dropped += gone.rows
         if dropped:
             self.dropped += dropped
             log.error("TimescaleDB is %d rows behind: gave up on %d", self.backlog(), dropped)
@@ -212,9 +209,17 @@ class Recorder:
                 await asyncio.sleep(self.retry)
                 continue
             self.queue.popleft()
-            self.durable.update(batch.offsets)
             self.written += batch.rows
             observe.HISTORY_ROWS.inc(batch.rows)
+
+    async def drain(self, timeout: float) -> int:
+        """On shutdown: hands off what is buffered and waits up to ``timeout`` for the writer.
+        Returns the rows still unwritten (lost)."""
+        self.hand_off()
+        deadline = time.monotonic() + timeout
+        while self.queue and time.monotonic() < deadline:
+            await asyncio.sleep(0.05)
+        return self.backlog()
 
     async def write(self, telemetry: list[tuple], laps: list[tuple]) -> None:
         async with self.pool.acquire() as conn, conn.transaction():

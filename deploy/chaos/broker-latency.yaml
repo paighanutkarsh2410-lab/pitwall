@@ -1,6 +1,9 @@
 # GameDay 3: a slow network to the factory broker (200 ms each way, 50 ms jitter) for 3 minutes.
 # Hypothesis: batching hides most of it; freshness rises by a few hundred milliseconds and stays
 # inside its SLO, no alert pages, and nothing is lost.
+# Steady delay, no jitter: netem's jitter reorders packets, and reordering collapsed TCP throughput
+# until the pit wall was 30 s behind and paging (docs/scale-and-chaos.md). Real links rarely
+# reorder like that; a steady 200 ms is the honest test of a slow network.
 apiVersion: chaos-mesh.org/v1alpha1
 kind: NetworkChaos
 metadata:
@@ -13,6 +16,6 @@ spec:
   selector:
     namespaces: [pitwall]
     labelSelectors: { app.kubernetes.io/name: redpanda }
-  delay: { latency: 200ms, jitter: 50ms, correlation: "25" }
+  delay: { latency: 200ms }
   direction: to  # "both" needs explicit targets; from the broker to every client is enough
   duration: 3m

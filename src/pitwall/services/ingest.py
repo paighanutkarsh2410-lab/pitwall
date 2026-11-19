@@ -52,7 +52,7 @@ async def work(health: Health) -> None:
         await history.migrate(pool)
         recorder = history.Recorder(pool)
 
-    # Offsets are committed by hand, only as far as what was read has been sent on and stored
+    # Offsets are committed by hand, every 0.5 s, once what was read has reached its topics
     # (see checkpoint below). Auto-commit every 5 s meant a crashed pod's successor re-read up
     # to 5 s of events and handed them on twice: the GameDay's SIGKILL found 1,251 duplicates.
     consumer = bus.consumer(group="ingest", auto_offset_reset="earliest", enable_auto_commit=False)
@@ -69,6 +69,7 @@ async def work(health: Health) -> None:
     last_lag = last_commit = 0.0
     read: dict = {}  # partition -> the offset after the last message handled
     writer = asyncio.create_task(recorder.run()) if recorder else None
+    committing: asyncio.Task | None = None
     try:
         while True:
             batches = await consumer.getmany(timeout_ms=250, max_records=2000)
@@ -109,21 +110,28 @@ async def work(health: Health) -> None:
                         if recorder:
                             recorder.add(bus.run_of(message.headers) or "unknown", event)
             if recorder:
-                if recorder.due() or (batches and not recorder.backlog()):
-                    dropped = recorder.hand_off(read)
-                    observe.HISTORY_DROPPED.inc(dropped)
+                if recorder.due():
+                    observe.HISTORY_DROPPED.inc(recorder.hand_off())
                 observe.HISTORY_BACKLOG.set(recorder.backlog())
-            if time.monotonic() - last_commit >= COMMIT_EVERY:
-                done = recorder.durable if recorder else read
-                if done:
-                    await checkpoint(consumer, producer, dict(done))
-                    done.clear()
+            # In the background: a slow broker mustn't pause the loop for each commit.
+            if (
+                read
+                and time.monotonic() - last_commit >= COMMIT_EVERY
+                and (committing is None or committing.done())
+            ):
+                committing = asyncio.create_task(checkpoint(consumer, producer, dict(read)))
+                read.clear()
                 last_commit = time.monotonic()
             if time.monotonic() - last_lag > 2:
                 for topic, lag in (await bus.lag_by_topic(consumer)).items():
                     observe.CONSUMER_LAG.labels("ingest", topic).set(lag)
                 last_lag = time.monotonic()
     finally:
+        if recorder:
+            lost = await recorder.drain(timeout=5)
+            if lost:
+                observe.HISTORY_DROPPED.inc(lost)
+                log.error("Shutting down with %d history rows unwritten", lost)
         if writer:
             writer.cancel()
         await consumer.stop()
@@ -134,8 +142,8 @@ COMMIT_EVERY = 0.5  # seconds: at most this much is read twice after a crash
 
 
 async def checkpoint(consumer, producer, offsets: dict) -> None:
-    """Commit ``offsets``: everything before them has reached its topic and, when recording,
-    the database. A crash re-reads from the last checkpoint (at least once, never lost)."""
+    """Commit ``offsets`` once everything sent so far has reached its topic. A crash re-reads
+    from the last checkpoint: at least once, never lost (projectors drop the repeats)."""
     from aiokafka.errors import CommitFailedError, IllegalStateError
 
     await producer.flush()

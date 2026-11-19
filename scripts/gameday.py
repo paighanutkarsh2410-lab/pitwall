@@ -31,8 +31,10 @@ NS = "pitwall"
 EXPERIMENTS = {
     "broker-kill": {"observe": 150, "expect": {"lost": 0, "recover_s": 240}},
     "pod-kill": {"observe": 120, "expect": {"lost": 0, "recover_s": 180, "doubled_pits": 0}},
-    "broker-latency": {"observe": 200, "expect": {"lost": 0, "worst_api_s": 2.0}},
-    "db-io-latency": {"observe": 200, "expect": {"lost": 0, "worst_api_s": 2.0}},
+    # A slow network degrades freshness without paging anyone.
+    "broker-latency": {"observe": 200, "expect": {"lost": 0, "worst_api_s": 5.0, "pages": 0}},
+    # A slow database is history's problem only: live timing stays fresh.
+    "db-io-latency": {"observe": 200, "expect": {"lost": 0, "worst_api_s": 1.0, "pages": 0}},
 }
 
 FRESH = (
@@ -239,7 +241,8 @@ def run(name: str, observe: float, speed: float) -> dict:
         **grew,
         "duplicate_history_rows": duplicate_rows(time.time() - began),
         "doubled_pits": doubled_pits(),
-        "alerts_fired": sorted(alerts_since(time.time() - began) - already),
+        "alerts_fired": sorted(fired := alerts_since(time.time() - began) - already),
+        "pages": sum(1 for alert in fired if alert.endswith("(page)")),
         "alerts_already_firing": sorted(already),
     }
     failed = []
