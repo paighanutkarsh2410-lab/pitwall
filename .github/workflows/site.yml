@@ -51,10 +51,15 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: |
+            web/package-lock.json
+            site/builds/home/package-lock.json
       - name: Build the pit wall in recording mode
         working-directory: web
         run: npm ci --no-audit --no-fund && npm run build:site
+      - name: Build the home page (the RB19 in 3D)
+        working-directory: site/builds/home
+        run: npm ci --no-audit --no-fund && npm run build
       - run: python scripts/build_site.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

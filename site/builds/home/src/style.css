@@ -1,0 +1,168 @@
+/* Pitwall · home. The opening-titles grade: black, a hard red, cold white; a script name over a
+   heavy wide surname; the surname again, huge and hollow, behind everything. */
+
+:root {
+  --black: #070708;
+  --ink: #f4f3f1;
+  --ink-soft: #a7a9ae;
+  --red: #e10600;
+  --red-deep: #7a0400;
+  --display: "Archivo", system-ui, sans-serif;
+  --script: "Mr Dafoe", "Brush Script MT", cursive;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --bar-h: 3.5rem;
+  --gutter: clamp(1.25rem, 5vw, 5.5rem);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+* { box-sizing: border-box; }
+html { background: var(--black); }
+body {
+  margin: 0; color: var(--ink); font-family: var(--display); font-size: clamp(1rem, 0.96rem + 0.22vw, 1.125rem);
+  line-height: 1.6; letter-spacing: 0.005em;
+  /* The studio: a red key glow off to the right, falling to black. The canvas is transparent. */
+  background:
+    radial-gradient(60vw 70vh at 72% 46%, rgb(225 6 0 / 0.16), transparent 70%),
+    radial-gradient(120vw 90vh at 70% 110%, rgb(255 255 255 / 0.06), transparent 60%),
+    var(--black);
+  background-attachment: fixed;
+}
+a { color: inherit; text-underline-offset: 0.2em; }
+:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+::selection { background: var(--red); color: #fff; }
+
+.stage { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; }
+
+/* ------------------------------------------------------------------ bar -- */
+.bar {
+  position: fixed; inset: 0 0 auto; z-index: 50; height: var(--bar-h);
+  display: flex; align-items: stretch;
+  background: linear-gradient(to bottom, rgb(7 7 8 / 0.85), rgb(7 7 8 / 0));
+}
+.bar__mark {
+  display: flex; align-items: center; padding: 0 2.2rem 0 var(--gutter);
+  background: var(--red); color: #fff; text-decoration: none;
+  font-weight: 900; font-style: italic; font-variation-settings: "wdth" 125; letter-spacing: 0.02em;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 1rem) 100%, 0 100%);
+}
+.bar__tabs { display: flex; gap: 0.25rem; padding-left: 1.25rem; }
+.bar__tabs a {
+  display: flex; align-items: center; padding: 0 0.9rem; text-decoration: none;
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft);
+  border-bottom: 2px solid transparent; transition: color 160ms var(--ease-out), border-color 160ms var(--ease-out);
+}
+.bar__tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--red); }
+.bar__tabs a:hover { color: var(--ink); }
+
+main { position: relative; z-index: 2; }
+
+/* ----------------------------------------------------------------- hero -- */
+.hero { position: relative; height: 100vh; overflow: hidden; }
+.hero__scene-space { display: none; }
+.hero__ghost {
+  position: absolute; right: -2vw; top: 50%; transform: translateY(-58%);
+  font-weight: 900; font-variation-settings: "wdth" 125; font-size: 34vw; line-height: 0.8; letter-spacing: -0.04em;
+  color: transparent; -webkit-text-stroke: 1px rgb(244 243 241 / 0.10);
+  user-select: none; z-index: -1; white-space: nowrap;
+}
+.hero__copy {
+  position: absolute; left: var(--gutter); top: 50%; transform: translateY(-50%);
+  max-width: min(34rem, 40vw); z-index: 3;
+}
+.kicker { margin: 0 0 1.25rem; font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-soft); }
+.title { margin: 0; line-height: 0.82; }
+.title__script {
+  display: block; font-family: var(--script); font-weight: 400; color: var(--red);
+  font-size: clamp(2.6rem, 1.4rem + 4.2vw, 5.4rem); letter-spacing: 0; line-height: 1; margin-left: 0.15em;
+  transform: rotate(-4deg); transform-origin: left bottom;
+}
+.title__bold {
+  display: block; font-weight: 900; font-variation-settings: "wdth" 125; text-transform: uppercase;
+  font-size: clamp(3.6rem, 1.4rem + 7.2vw, 9rem); letter-spacing: -0.035em; margin-top: -0.12em;
+}
+.hero__sub { margin: 1.5rem 0 0; max-width: 30ch; color: var(--ink-soft); font-size: 1.1rem; line-height: 1.5; }
+
+.rev {
+  position: absolute; left: var(--gutter); bottom: clamp(1.5rem, 6vh, 3.5rem); z-index: 3; width: min(26rem, 80vw);
+  font-family: var(--mono);
+}
+.rev__row { display: flex; gap: 1.5rem; align-items: baseline; font-size: 0.78rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.08em; }
+.rev__row b { color: var(--ink); font-size: 1.35rem; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.rev__rpm b { display: inline-block; min-width: 5.2ch; text-align: right; }
+.rev__bar { margin-top: 0.6rem; height: 4px; background: rgb(244 243 241 / 0.12); overflow: hidden; }
+.rev__fill { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #f4f3f1 0 70%, var(--red) 70%); transform-origin: left; transform: scaleX(0); }
+.rev__src { margin: 0.5rem 0 0; font-size: 0.68rem; color: var(--ink-soft); letter-spacing: 0.04em; }
+
+.corner { position: absolute; font-family: var(--mono); font-size: 0.8rem; font-weight: 700; color: var(--ink-soft); z-index: 3; }
+.corner--tl { left: var(--gutter); top: calc(var(--bar-h) + 1.25rem); }
+.corner--br { right: var(--gutter); bottom: 1.5rem; }
+.corner--tr { right: var(--gutter); top: 2rem; }
+.corner--bl { left: var(--gutter); bottom: 2rem; }
+
+/* ------------------------------------------------------------ title card -- */
+/* The page the car rolls over. Its red is revealed behind the car as it passes (main.ts drives
+   --reveal from the car's position on screen). */
+.card {
+  position: absolute; inset: 0; z-index: 4; overflow: hidden; display: grid; align-items: center;
+  padding: calc(var(--bar-h) + 3rem) var(--gutter) 4rem;
+  background: linear-gradient(115deg, var(--red) 0%, #b80500 55%, var(--red-deep) 100%);
+  clip-path: inset(0 0 0 var(--reveal, 0%));
+  color: #fff;
+}
+.card::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(115deg, rgb(255 255 255 / 0.05) 0 2px, transparent 2px 18px);
+  mask-image: linear-gradient(to right, transparent, #000 60%);
+}
+.card__ghost {
+  position: absolute; left: -3vw; bottom: -6vw; font-weight: 900; font-variation-settings: "wdth" 125;
+  font-size: 22vw; line-height: 0.8; letter-spacing: -0.04em; white-space: nowrap;
+  color: transparent; -webkit-text-stroke: 1.5px rgb(255 255 255 / 0.22); user-select: none;
+}
+.card__body { position: relative; z-index: 2; max-width: 60rem; }
+.card__team { margin: 0 0 1rem; font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(255 255 255 / 0.85); }
+.card__name { margin: 0; line-height: 0.85; }
+.card__first { display: block; font-family: var(--script); font-weight: 400; font-size: clamp(3rem, 1.6rem + 5vw, 6.5rem); color: #fff; margin-left: 0.2em; transform: rotate(-4deg); transform-origin: left bottom; }
+.card__last { display: block; font-weight: 900; font-variation-settings: "wdth" 125; font-size: clamp(3.2rem, 0.8rem + 8.6vw, 10.5rem); letter-spacing: -0.035em; margin-top: -0.1em; }
+.card__facts { display: grid; grid-template-columns: repeat(4, minmax(0, auto)); gap: 1rem 3rem; margin: 3rem 0 0; justify-content: start; }
+.card__facts dt { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgb(255 255 255 / 0.8); }
+.card__facts dd { margin: 0.35rem 0 0; font-weight: 800; font-variation-settings: "wdth" 110; font-size: clamp(1.8rem, 1.2rem + 1.6vw, 3rem); line-height: 1; font-variant-numeric: tabular-nums; }
+.card__facts small { font-size: 0.45em; margin-left: 0.1em; opacity: 0.8; }
+.card__actions { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; margin: 3rem 0 0; }
+.cta {
+  display: inline-flex; align-items: center; padding: 0.95rem 2.4rem 0.95rem 1.5rem;
+  background: #fff; color: #120202; text-decoration: none; font-weight: 800; font-size: 0.9rem;
+  text-transform: uppercase; letter-spacing: 0.08em; font-variation-settings: "wdth" 112;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 0.8rem) 100%, 0 100%);
+  transition: transform 140ms var(--ease-out);
+}
+.cta:hover { transform: translateY(-1px); }
+.cta:active { transform: scale(0.97); }
+.more { font-weight: 700; color: #fff; }
+.card :focus-visible { outline-color: #fff; }
+
+.foot { position: relative; z-index: 2; padding: 2rem var(--gutter); font-size: 0.75rem; color: var(--ink-soft); background: var(--black); }
+.foot p { margin: 0; max-width: 90ch; }
+
+/* --------------------------------------------------------------- phones -- */
+@media (max-width: 860px) {
+  .bar__mark { padding-left: 1rem; padding-right: 1.8rem; font-size: 0.9rem; }
+  .bar__tabs { padding-left: 0.4rem; }
+  .bar__tabs a { padding: 0 0.5rem; font-size: 0.68rem; letter-spacing: 0.06em; }
+  /* The car takes the top half; the type sits below it. */
+  .hero__copy { top: auto; bottom: 9.5rem; transform: none; max-width: none; right: var(--gutter); }
+  .hero__ghost { font-size: 58vw; top: 30%; }
+  .title__bold { font-size: clamp(3.2rem, 1rem + 13vw, 5rem); }
+  .hero__sub { font-size: 0.95rem; }
+  .card__facts { grid-template-columns: repeat(2, minmax(0, auto)); gap: 1rem 2rem; }
+  .card__ghost { font-size: 34vw; }
+  .card__last { font-size: 10.2vw; }
+  .card__first { font-size: 3.2rem; }
+}
+
+/* Reduced motion: no roll. The car holds still, and the card follows it in the page. */
+@media (prefers-reduced-motion: reduce) {
+  .hero { height: auto; overflow: visible; }
+  .hero__scene-space { display: block; height: 100vh; }
+  .card { position: relative; min-height: 100vh; clip-path: none; }
+}

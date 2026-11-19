@@ -2,12 +2,13 @@
 
     python scripts/build_site.py
 
-  site/builds/race/          ->  site/dist/                 the scroll-driven race (tab 1)
+  site/builds/home/dist/     ->  site/dist/                 the home page: the RB19 (tab 1)
   web/dist (recording build) ->  site/dist/pitwall/         the pit-wall screen (tab 2)
   site/builds/engineering/   ->  site/dist/engineering/     how it is built (tab 3)
   site/public/data/          ->  site/dist/data/            written by scripts/record_race.py
 
-The pit-wall screen is built with `npm run build:site` in web/ (a recording, not a WebSocket).
+Build the parts first: `npm run build` in site/builds/home (the 3D home page) and
+`npm run build:site` in web/ (the pit wall on a recording, not a WebSocket).
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ def copy(source: Path, target: Path) -> None:
 
 def main() -> int:
     DIST.mkdir(parents=True, exist_ok=True)
-    copy(SITE / "builds" / "race", DIST)
+    copy(SITE / "builds" / "home" / "dist", DIST)
     copy(SITE / "builds" / "engineering", DIST / "engineering")
     copy(ROOT / "web" / "dist-site", DIST / "pitwall")
     copy(SITE / "public" / "data", DIST / "data")

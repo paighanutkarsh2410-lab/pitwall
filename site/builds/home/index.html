@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pitwall · Seventeenth to first</title>
+<meta name="description" content="Verstappen's 2024 São Paulo Grand Prix, from seventeenth on the grid to the win, replayed from 1.86 million real timing events.">
+<meta name="theme-color" content="#070708">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23070708'/><path d='M5 22 L15 10 H27 L17 22 Z' fill='%23e10600'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,300..900;1,62..125,300..900&family=JetBrains+Mono:wght@400;600;700&family=Mr+Dafoe&display=swap">
+</head>
+<body>
+  <!-- The 3D stage: fixed behind everything. -->
+  <canvas class="stage" aria-hidden="true"></canvas>
+
+  <header class="bar">
+    <a class="bar__mark" href="./">PITWALL</a>
+    <nav class="bar__tabs" aria-label="Site">
+      <a href="./" aria-current="page">Home</a>
+      <a href="pitwall/">Pit wall</a>
+      <a href="engineering/">Engineering</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- HERO: pinned while the car revs, launches and rolls across the page, uncovering the card. -->
+    <section class="hero" aria-label="The RB19 on the grid">
+      <div class="hero__scene-space" aria-hidden="true"></div>
+      <div class="hero__ghost" aria-hidden="true">RB19</div>
+      <div class="hero__copy">
+        <p class="kicker">2024 São Paulo Grand Prix · Interlagos</p>
+        <h1 class="title">
+          <span class="title__script">Seventeenth to</span>
+          <span class="title__bold">First.</span>
+        </h1>
+        <p class="hero__sub">Verstappen's race, rebuilt from 1.86 million real timing events.</p>
+      </div>
+      <div class="rev" aria-label="Car 1 on the grid, real telemetry">
+        <div class="rev__row">
+          <span class="rev__rpm"><b class="rev__n">0</b> rpm</span>
+          <span class="rev__gear">Gear <b class="rev__g">N</b></span>
+          <span class="rev__speed"><b class="rev__s">0</b> km/h</span>
+        </div>
+        <div class="rev__bar"><span class="rev__fill"></span></div>
+        <p class="rev__src">Car 1, real telemetry: the grid, then the launch.</p>
+      </div>
+      <span class="corner corner--tl" aria-hidden="true">1</span>
+      <span class="corner corner--br" aria-hidden="true">1</span>
+      <!-- The page the car rolls over: a title card, the way the broadcast introduces a driver.
+           Revealed behind the car as it passes (main.ts drives --reveal). -->
+      <div class="card" aria-label="Max Verstappen">
+        <div class="card__ghost" aria-hidden="true">VERSTAPPEN</div>
+        <div class="card__body">
+          <p class="card__team">Red Bull Racing · RB19</p>
+          <h2 class="card__name"><span class="card__first">Max</span><span class="card__last">VERSTAPPEN</span></h2>
+          <dl class="card__facts">
+            <div><dt>Grid</dt><dd>17</dd></div>
+            <div><dt>Finish</dt><dd>1</dd></div>
+            <div><dt>Winning margin</dt><dd>19.477<small>s</small></dd></div>
+            <div><dt>Fastest lap</dt><dd>1:20.472</dd></div>
+          </dl>
+          <p class="card__actions">
+            <a class="cta" href="pitwall/">Open the pit wall</a>
+            <a class="more" href="engineering/">How it's built</a>
+          </p>
+        </div>
+        <span class="corner corner--tr" aria-hidden="true">1</span>
+        <span class="corner corner--bl" aria-hidden="true">1</span>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="foot">
+    <p>Unofficial personal project. Not associated with Formula 1, the FIA, any team or broadcaster. Race data from <a href="https://openf1.org">OpenF1</a>. <span class="foot__model"></span> <a href="https://github.com/paighanutkarsh2410-lab/pitwall">Source on GitHub</a>.</p>
+  </footer>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
