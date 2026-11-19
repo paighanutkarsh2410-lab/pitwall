@@ -42,8 +42,8 @@ async function main() {
       stage.camera.lookAt(0, -2.2, 0);
     } else {
       // Close on the front: the nose and front wheels fill the right half; the rest runs off-frame.
-      stage.camera.position.set(0, 1.15, 8.2);
-      stage.camera.lookAt(0.4, 0.45, 0);
+      stage.camera.position.set(0, 1.05, 6.4);
+      stage.camera.lookAt(0.75, 0.42, 0);
     }
   };
   frame();
@@ -51,7 +51,7 @@ async function main() {
 
   // Where the car is in the shot, as the scroll moves it.
   const shot = { x: 0, yaw: 0, launch: 0, roll: 0 };
-  const home = () => ({ x: isPhone() ? 0 : 3.1, yaw: THREE.MathUtils.degToRad(isPhone() ? 48 : 50) });
+  const home = () => ({ x: isPhone() ? 0 : 2.85, yaw: THREE.MathUtils.degToRad(isPhone() ? 48 : 48) });
   Object.assign(shot, home());
 
   // Speed streaks: thin light bars that stream past as the car goes, red and white.
@@ -106,6 +106,8 @@ async function main() {
   const clock = new THREE.Clock();
   const tailWorld = new THREE.Vector3();
   let distance = 0;
+  let lastRpm = 0;
+  let rock = 0;
   let lastX = 0;
   let visible = true;
   new IntersectionObserver(([e]) => (visible = e.isIntersecting)).observe(hero);
@@ -127,11 +129,21 @@ async function main() {
     }
     const rev = THREE.MathUtils.clamp((sample.rpm - RPM_LOW) / (RPM_HIGH - RPM_LOW), 0, 1);
 
-    // Revving: the chassis shivers on its springs, harder as the revs climb. The wheels stay put.
-    const shake = reduce ? 0 : rev * (1 - shot.roll * 0.7);
-    car.body.position.y = Math.sin(t * 92) * 0.004 * shake + Math.sin(t * 37) * 0.002 * shake - shot.launch * 0.035 * (1 - shot.roll);
-    car.body.rotation.x = Math.sin(t * 61) * 0.0022 * shake;
-    car.body.rotation.z = Math.sin(t * 47) * 0.0018 * shake + shot.launch * 0.012 * (1 - shot.roll); // squat under launch
+    // Revving: the chassis shivers on its springs, harder as the revs climb, and rocks back on
+    // its suspension each time the driver blips the throttle (engine torque twisting the car).
+    // The wheels stay put. Reduced motion keeps everything still.
+    const shake = reduce ? 0 : rev * rev * (1 - shot.roll * 0.7);
+    const blip = Math.max(0, (sample.rpm - lastRpm) / 900); // how hard the revs are rising
+    lastRpm = sample.rpm;
+    rock += (Math.min(1, blip) - rock) * 0.18;
+    const torque = reduce ? 0 : rock * (1 - shot.roll);
+    car.body.position.y =
+      Math.sin(t * 92) * 0.011 * shake + Math.sin(t * 37) * 0.006 * shake + torque * 0.018 - shot.launch * 0.035 * (1 - shot.roll);
+    car.body.rotation.x = Math.sin(t * 61) * 0.006 * shake + torque * 0.012; // rolls towards one side, as a V6 does
+    car.body.rotation.z = Math.sin(t * 47) * 0.005 * shake + torque * 0.009 + shot.launch * 0.012 * (1 - shot.roll);
+    // The camera feels it too, faintly, at the top of the rev range.
+    const buzz = reduce ? 0 : Math.max(0, rev - 0.55) * (1 - shot.roll);
+    stage.camera.position.y = (isPhone() ? 3.2 : 1.05) + Math.sin(t * 71) * 0.006 * buzz;
 
     // The roll: the car turns side-on and drives out to the left, faster and faster.
     const exit = isPhone() ? -14 : -19;

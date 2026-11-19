@@ -7,8 +7,8 @@ import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
  * The car. Convention for everything that uses it: the car is 5.6 m long, sits on y = 0, and its
  * nose points along -X. `body` is what shakes when the engine revs; `wheels` spin about their axle.
  *
- * models/rb19.glb is redgrund's "Oracle Red Bull F1 Car RB19 2023" (Sketchfab, CC BY 4.0),
- * re-coloured without its logos. Until that file is in place, a stand-in is built from primitives.
+ * models/rb19.glb is redgrund's "Oracle Red Bull F1 Car RB19 2023" (Sketchfab, CC BY 4.0), in
+ * its original livery. Until that file is in place, a stand-in is built from primitives.
  */
 export interface Car {
   root: THREE.Group;
@@ -240,7 +240,7 @@ export async function loadCar(url = "models/rb19.glb"): Promise<Car> {
       body,
       wheels,
       standIn: false,
-      credit: '3D model: "Oracle Red Bull F1 Car RB19 2023" by redgrund (Sketchfab, CC BY 4.0), shown without logos.',
+      credit: '3D model: "Oracle Red Bull F1 Car RB19 2023" by redgrund (Sketchfab, CC BY 4.0). Team and sponsor marks belong to their owners.',
     };
   } catch (error) {
     console.warn("RB19 model did not load; using the stand-in", error);

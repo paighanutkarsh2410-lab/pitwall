@@ -1,11 +1,10 @@
-// Prepares the RB19 for the web: removes the logos, then shrinks it.
+// Prepares a car model for the web: shrinks it, and optionally removes its logos.
 //
-//   node scripts/prepare-model.mjs models/source/rb19.glb public/models/rb19.glb
+//   node scripts/prepare-model.mjs <source.glb> <target.glb> [--plain]
 //
-// The source is redgrund's "Oracle Red Bull F1 Car RB19 2023" (Sketchfab, CC BY 4.0). Its livery
-// is one baked colour texture: navy bodywork and black carbon carrying sponsor and team logos.
-// The site is unofficial, so every logo pixel is repainted with the paint around it (navy or
-// carbon); the shape, normal and roughness detail are untouched. Then: unused vertex data goes,
+// By default the livery is kept exactly as modelled. With --plain, every logo pixel of a baked
+// livery is repainted with the paint around it (the livery's base colour, measured, or carbon),
+// leaving shape, normal and roughness detail untouched. Either way: unused vertex data goes,
 // textures become 2048 px WebP, and geometry is quantized and meshopt-compressed.
 
 import { NodeIO } from "@gltf-transform/core";
@@ -14,8 +13,9 @@ import { dedup, meshopt, prune, quantize, textureCompress } from "@gltf-transfor
 import { MeshoptEncoder } from "meshoptimizer";
 import sharp from "sharp";
 
-const [source, target] = process.argv.slice(2);
-if (!source || !target) throw new Error("usage: prepare-model.mjs <source.glb> <target.glb>");
+const [source, target] = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+const plain = process.argv.includes("--plain");
+if (!source || !target) throw new Error("usage: prepare-model.mjs <source.glb> <target.glb> [--plain]");
 
 /** Carbon and rubber: near-black and unsaturated. */
 const isCarbon = (r, g, b) => Math.max(r, g, b) < 40 && Math.max(r, g, b) - Math.min(r, g, b) < 18;
@@ -135,10 +135,12 @@ await MeshoptEncoder.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ "meshopt.encoder": MeshoptEncoder });
 const doc = await io.read(source);
 
-console.log("Removing the logos from the livery");
-for (const material of doc.getRoot().listMaterials()) {
-  const base = material.getBaseColorTexture();
-  if (base) base.setImage(await repaint(base.getImage()));
+if (plain) {
+  console.log("Removing the logos from the livery");
+  for (const material of doc.getRoot().listMaterials()) {
+    const base = material.getBaseColorTexture();
+    if (base) base.setImage(await repaint(base.getImage()));
+  }
 }
 
 console.log("Dropping vertex data the material never reads");

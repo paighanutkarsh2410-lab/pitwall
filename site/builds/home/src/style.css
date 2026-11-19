@@ -88,8 +88,9 @@ main { position: relative; z-index: 2; }
 }
 .rev__row { display: flex; gap: 1.5rem; align-items: baseline; font-size: 0.78rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.08em; }
 .rev__row b { color: var(--ink); font-size: 1.35rem; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.rev__rpm b { font-size: 2.6rem; font-weight: 700; line-height: 1; }
 .rev__rpm b { display: inline-block; min-width: 5.2ch; text-align: right; }
-.rev__bar { margin-top: 0.6rem; height: 4px; background: rgb(244 243 241 / 0.12); overflow: hidden; }
+.rev__bar { margin-top: 0.6rem; height: 6px; background: rgb(244 243 241 / 0.12); overflow: hidden; }
 .rev__fill { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #f4f3f1 0 70%, var(--red) 70%); transform-origin: left; transform: scaleX(0); }
 .rev__src { margin: 0.5rem 0 0; font-size: 0.68rem; color: var(--ink-soft); letter-spacing: 0.04em; }
 
