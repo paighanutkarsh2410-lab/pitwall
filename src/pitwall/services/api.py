@@ -113,6 +113,26 @@ async def get_state() -> dict:
 
 
 @api.websocket("/ws")
+class Encoded:
+    """Each shared piece of a frame (board, strategy, positions, track) encoded to JSON once per
+    version, however many browsers are watching. Found by the load test: at 200 viewers the API
+    re-encoded the same 10 KB board about 1,000 times a second."""
+
+    def __init__(self) -> None:
+        self.cache: dict[str, tuple[object, str]] = {}
+
+    def get(self, name: str, version: object, value) -> str:
+        cached = self.cache.get(name)
+        if cached is None or cached[0] != version:
+            data = value() if callable(value) else value
+            cached = (version, json.dumps(data, separators=(",", ":")))
+            self.cache[name] = cached
+        return cached[1]
+
+
+encoded = Encoded()
+
+
 async def stream(socket: WebSocket) -> None:
     await socket.accept()
     observe.WEBSOCKETS.inc()
@@ -131,17 +151,24 @@ async def stream(socket: WebSocket) -> None:
 
     async def send() -> None:
         while True:
-            frame: dict = {}
+            # Shared pieces come pre-encoded; only this browser's telemetry is encoded here.
+            parts: list[str] = []
             if live.board_version != sent["board"]:
-                frame["board"], sent["board"] = live.board, live.board_version
+                parts.append('"board":' + encoded.get("board", live.board_version, live.board))
+                sent["board"] = live.board_version
             if live.strategy_version != sent["strategy"]:
-                frame["strategy"], sent["strategy"] = live.strategy, live.strategy_version
+                version = live.strategy_version
+                parts.append('"strategy":' + encoded.get("strategy", version, live.strategy))
+                sent["strategy"] = version
             if live.positions_version != sent["positions"]:
-                frame["positions"] = live.positions_frame()
-                sent["positions"] = live.positions_version
+                version = live.positions_version
+                positions = encoded.get("positions", version, live.positions_frame)
+                parts.append('"positions":' + positions)
+                sent["positions"] = version
             track = live.track()
             if track and sent["track"] != track["race"]:
-                frame["track"], sent["track"] = track, track["race"]
+                parts.append('"track":' + encoded.get("track", track["race"], track))
+                sent["track"] = track["race"]
             telemetry = {}
             for car, after in list(watch.items()):
                 samples = live.telemetry_since(car, after)
@@ -149,9 +176,9 @@ async def stream(socket: WebSocket) -> None:
                     telemetry[str(car)] = samples
                     watch[car] = samples[-1][0]
             if telemetry:
-                frame["telemetry"] = telemetry
-            if frame:
-                await socket.send_text(json.dumps(frame, separators=(",", ":")))
+                parts.append('"telemetry":' + json.dumps(telemetry, separators=(",", ":")))
+            if parts:
+                await socket.send_text("{" + ",".join(parts) + "}")
                 observe.FRAMES.inc()
             await asyncio.sleep(FRAME_EVERY)
 

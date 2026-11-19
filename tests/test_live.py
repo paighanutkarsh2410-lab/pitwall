@@ -68,3 +68,23 @@ def test_telemetry_is_sent_once():
     assert [s[1] for s in live.telemetry_since(1, None)] == [100, 110, 120]
     assert [s[1] for s in live.telemetry_since(1, 2)] == [120]
     assert live.telemetry_since(44, None) == []
+
+
+def test_shared_frame_pieces_are_encoded_once_per_version():
+    import json
+
+    from pitwall.services.api import Encoded
+
+    calls = []
+
+    def board():
+        calls.append(1)
+        return {"lap": 7, "cars": []}
+
+    enc = Encoded()
+    first = enc.get("board", 3, board)
+    for _ in range(200):  # 200 browsers asking for the same version
+        assert enc.get("board", 3, board) == first
+    assert len(calls) == 1 and json.loads(first) == {"lap": 7, "cars": []}
+    enc.get("board", 4, board)  # a new version is encoded again
+    assert len(calls) == 2
