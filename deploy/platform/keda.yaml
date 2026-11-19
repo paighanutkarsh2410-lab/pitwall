@@ -1,0 +1,19 @@
+# kedacore/keda: scales ingest and the uplink on consumer lag, the API on connected browsers.
+resources:
+  operator:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits: { memory: 256Mi }
+  metricServer:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits: { memory: 256Mi }
+  webhooks:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+prometheus:
+  operator:
+    enabled: true
+    podMonitor: { enabled: false }
+podAnnotations:
+  keda:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"

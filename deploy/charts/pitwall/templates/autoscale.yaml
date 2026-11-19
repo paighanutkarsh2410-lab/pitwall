@@ -1,0 +1,59 @@
+{{- /*
+Autoscaling with KEDA. A service with `autoscale` gets a ScaledObject:
+
+  on: lag       consumer-group lag on pitwall.raw, per replica (ingest: more pods share the
+                partitions, so they really do go faster)
+  on: browsers  pit-wall browsers connected, per replica (the API)
+
+timing and strategy never scale: each copy holds the whole race, so more copies would add
+redundancy, not throughput. The replica count in the Rollout is only the starting point; Argo CD
+ignores it (deploy/apps/pitwall.yaml) because KEDA owns it.
+*/ -}}
+{{- range $name, $svc := .Values.services }}
+{{- with $svc.autoscale }}
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ $name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    {{- include "pitwall.labels" $ | nindent 4 }}
+spec:
+  scaleTargetRef:
+    {{- if $svc.canary }}
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    {{- else }}
+    apiVersion: apps/v1
+    kind: Deployment
+    {{- end }}
+    name: {{ $name }}
+  minReplicaCount: {{ .min }}
+  maxReplicaCount: {{ .max }}
+  pollingInterval: 10
+  cooldownPeriod: 120
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          # Don't flap: a race's traffic comes in bursts (a safety car restart, a pit window).
+          stabilizationWindowSeconds: 120
+  triggers:
+    {{- if eq .on "lag" }}
+    - type: kafka
+      metadata:
+        bootstrapServers: redpanda.{{ $.Release.Namespace }}.svc.cluster.local:9092
+        consumerGroup: {{ $name }}
+        topic: pitwall.raw
+        lagThreshold: {{ .lag | quote }}
+        offsetResetPolicy: earliest
+    {{- else if eq .on "browsers" }}
+    - type: prometheus
+      metadata:
+        serverAddress: {{ $.Values.canary.prometheus }}
+        query: sum(pitwall_websocket_clients{app_kubernetes_io_name="{{ $name }}"})
+        threshold: {{ .per | quote }}
+    {{- end }}
+{{- end }}
+{{- end }}

@@ -19,6 +19,16 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: trackside
+  # KEDA owns the uplink's replica count.
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: uplink
+      jsonPointers: [/spec/replicas]
   syncPolicy:
     automated: { prune: true, selfHeal: true }
-    syncOptions: [CreateNamespace=true]
+    syncOptions: [CreateNamespace=true, RespectIgnoreDifferences=true]
+    # The first sync after KEDA is added may arrive before its CRDs do: try again.
+    retry:
+      limit: 10
+      backoff: { duration: 15s, factor: 2, maxDuration: 3m }

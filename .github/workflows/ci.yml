@@ -74,6 +74,10 @@ jobs:
           helm template otel-collector open-telemetry/opentelemetry-collector --version 0.178.2 -f otel-collector.yaml > /dev/null
           helm repo add argo https://argoproj.github.io/argo-helm
           helm template argo-rollouts argo/argo-rollouts --version 2.43.9 -f ../platform/argo-rollouts.yaml > /dev/null
+          helm repo add kedacore https://kedacore.github.io/charts
+          helm repo add chaos-mesh https://charts.chaos-mesh.org
+          helm template keda kedacore/keda --version 2.21.0 -f ../platform/keda.yaml > /dev/null
+          helm template chaos-mesh chaos-mesh/chaos-mesh --version 2.8.6 -f ../platform/chaos-mesh.yaml > /dev/null
       - name: Scripts parse
         run: for s in scripts/*.sh; do bash -n "$s"; done
 

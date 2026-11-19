@@ -16,9 +16,14 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: pitwall
+  # KEDA owns the replica counts of autoscaled services; Git only sets where they start.
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Rollout
+      jsonPointers: [/spec/replicas]
   syncPolicy:
     automated: { prune: true, selfHeal: true }
-    syncOptions: [CreateNamespace=true]
+    syncOptions: [CreateNamespace=true, RespectIgnoreDifferences=true]
     # The first sync after Argo Rollouts is added may arrive before its CRDs do: try again.
     retry:
       limit: 10

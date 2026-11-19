@@ -1,0 +1,24 @@
+# The uplink scales on the trackside backlog: after an outage, more uplinks share the partitions
+# and drain the backlog in parallel.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: uplink
+  labels: { app.kubernetes.io/name: uplink, app.kubernetes.io/part-of: pitwall, pitwall.dev/site: trackside }
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: uplink
+  minReplicaCount: {{ .Values.uplink.autoscale.min }}
+  maxReplicaCount: {{ .Values.uplink.autoscale.max }}
+  pollingInterval: 10
+  cooldownPeriod: 120
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: redpanda.{{ .Release.Namespace }}.svc.cluster.local:9092
+        consumerGroup: uplink
+        topic: pitwall.raw
+        lagThreshold: {{ .Values.uplink.autoscale.lag | quote }}
+        offsetResetPolicy: earliest

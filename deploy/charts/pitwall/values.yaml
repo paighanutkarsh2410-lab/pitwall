@@ -24,6 +24,8 @@ services:
     db: true
     canary: ingest
     defect: ""
+    # More pods share the partitions (6): scale on lag, at most 4 on a laptop.
+    autoscale: { on: lag, min: 2, max: 4, lag: 2000 }
     resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { memory: 384Mi } }
   timing:
     replicas: 1
@@ -40,6 +42,7 @@ services:
     db: true
     canary: api
     defect: ""
+    autoscale: { on: browsers, min: 1, max: 3, per: 100 }
     resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { memory: 384Mi } }
   # The replayer runs at the track (the pitwall-trackside chart). Add it here for a single-site
   # setup: replayer: { replicas: 1, races: true, resources: {...} }

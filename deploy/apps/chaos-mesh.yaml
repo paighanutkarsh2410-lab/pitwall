@@ -1,0 +1,26 @@
+# Chaos Mesh: fault injection for the GameDay (scripts/gameday.sh, deploy/chaos).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chaos-mesh
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.chaos-mesh.org
+      chart: chaos-mesh
+      targetRevision: 2.8.6
+      helm:
+        releaseName: chaos-mesh
+        valueFiles: [$values/deploy/platform/chaos-mesh.yaml]
+    - repoURL: https://github.com/paighanutkarsh2410-lab/pitwall.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: chaos-mesh
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]

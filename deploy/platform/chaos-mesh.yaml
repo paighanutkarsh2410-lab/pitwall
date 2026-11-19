@@ -1,0 +1,17 @@
+# chaos-mesh/chaos-mesh: the GameDay's experiments (deploy/chaos), sized for a laptop.
+controllerManager:
+  replicaCount: 1
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits: { memory: 256Mi }
+chaosDaemon:
+  # kind nodes run containerd, not Docker.
+  runtime: containerd
+  socketPath: /run/containerd/containerd.sock
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits: { memory: 256Mi }
+dashboard:
+  create: false  # experiments are files in Git, run by scripts/gameday.sh
+dnsServer:
+  create: false
