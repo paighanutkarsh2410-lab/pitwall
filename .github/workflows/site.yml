@@ -1,20 +1,18 @@
 name: Site
 
-# The public site on GitHub Pages: the race (a scroll-driven broadcast), the pit wall (the real
-# screen, playing a recording) and how it is built. The race data is not in Git: it is
-# downloaded from OpenF1 (cached), recorded through Pitwall's own timing, strategy and API code
-# by scripts/record_race.py, and assembled with the pages by scripts/build_site.py.
+# The public site on GitHub Pages: the home page (each race's winning car, in 3D), the pit wall
+# (the real screen, playing a recorded race) and how it is built.
+#
+# The race recordings are not in Git and not rebuilt here: recording every race since 2023 takes
+# hours at OpenF1's free rate limit. scripts/publish_site_data.sh records them on a workstation
+# and uploads them as one archive to the `site-data` release; this workflow downloads it.
 on:
   push:
     branches: [main]
     paths:
       - "site/builds/**"
       - "web/**"
-      - "scripts/record_race.py"
       - "scripts/build_site.py"
-      - "src/pitwall/timing.py"
-      - "src/pitwall/strategy.py"
-      - "src/pitwall/live.py"
       - ".github/workflows/site.yml"
   workflow_dispatch:
 
@@ -31,22 +29,20 @@ jobs:
   build:
     name: Build the site
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: pyproject.toml
-      - run: pip install -e .
-      - uses: actions/cache@v4
-        with:
-          path: ~/.pitwall/races/2024-sao-paulo
-          key: race-2024-sao-paulo-v1
-      - run: pitwall fetch 2024-sao-paulo
-      - name: Record the race through Pitwall's own models
-        run: python scripts/record_race.py 2024-sao-paulo site/public/data
+      - name: Download the race recordings (the site-data release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p site/public/data
+          gh release download site-data --repo "${{ github.repository }}" --pattern "site-data.tar.gz" --dir /tmp
+          tar -xzf /tmp/site-data.tar.gz -C site/public/data
+          echo "races: $(ls site/public/data | wc -l)"
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -57,7 +53,7 @@ jobs:
       - name: Build the pit wall in recording mode
         working-directory: web
         run: npm ci --no-audit --no-fund && npm run build:site
-      - name: Build the home page (the RB19 in 3D)
+      - name: Build the home page (the winning cars in 3D)
         working-directory: site/builds/home
         run: npm ci --no-audit --no-fund && npm run build
       - run: python scripts/build_site.py
