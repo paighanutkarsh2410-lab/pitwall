@@ -81,3 +81,10 @@ before it is the quiet.
 
 About 9 viewport-heights across 7 sections. Families: `in`, `pin`, bespoke drawing, `reveal`,
 `count`, `parallax`.
+
+## Restyle (owner's request)
+
+The owner asked for the Engineering and Pit wall tabs to match the rebuilt home page. The world
+moves from cool paper to the site's broadcast grade: black, cold white and red, the same
+graphics bar, Archivo, JetBrains Mono and a Mr Dafoe script title. The grammar, journey,
+signature move and every number are unchanged; the link chapter becomes a red title card.
