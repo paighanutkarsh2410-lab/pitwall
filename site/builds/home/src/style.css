@@ -86,6 +86,7 @@ main { position: relative; z-index: 2; }
 .rev {
   position: absolute; left: var(--gutter); bottom: clamp(1.5rem, 6vh, 3.5rem); z-index: 3; width: min(26rem, 80vw);
   font-family: var(--mono);
+  pointer-events: none; /* a readout: it must never take a tap meant for the button above it */
 }
 .rev__row { display: flex; gap: 1.5rem; align-items: baseline; font-size: 0.78rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.08em; }
 .rev__row b { color: var(--ink); font-size: 1.35rem; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
@@ -203,7 +204,9 @@ main { position: relative; z-index: 2; }
   .bar__tabs { padding-left: 0.4rem; }
   .bar__tabs a { padding: 0 0.5rem; font-size: 0.68rem; letter-spacing: 0.06em; }
   /* The car takes the top half; the type sits below it. */
-  .hero__copy { top: auto; bottom: 9.5rem; transform: none; max-width: none; right: var(--gutter); }
+  .hero__copy { top: auto; bottom: 8.5rem; transform: none; max-width: none; right: var(--gutter); }
+  .rev { bottom: 1.2rem; }
+  .rev__rpm b { font-size: 1.9rem; }
   .hero__ghost { font-size: 58vw; top: 30%; }
   .title__bold { font-size: min(5rem, calc(88vw / (var(--name-chars, 6) * 0.82))); }
   .hero__sub { font-size: 0.95rem; }
