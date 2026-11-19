@@ -11,7 +11,7 @@ const page = await browser.newPage({ viewport: { width: w, height: h } });
 const errors = [];
 page.on("console", (m) => (m.type() === "error" || m.type() === "info") && errors.push(m.text()));
 page.on("pageerror", (e) => errors.push(String(e)));
-await page.goto("http://localhost:4500/");
+await page.goto("http://localhost:4500/?race=2024-sao-paulo");
 await page.waitForTimeout(3500);
 const tag = `${w}x${h}`;
 await page.screenshot({ path: `lab/home-${tag}-0.png` });
