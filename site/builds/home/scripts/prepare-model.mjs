@@ -175,6 +175,34 @@ function noseYaw(doc) {
   return { yaw: noseAtMax ? Math.PI : 0, axis: "x", noseAtMax, ends: [lowEnd, highEnd] };
 }
 
+/**
+ * Some exports mark every material as bare metal (metallic 1, no metalness map), paint and
+ * tyres included: three.js then draws the car as dark chrome, the livery lost and the studio
+ * lights reflected as hot spots. When nearly every material is like that, the flag is an export
+ * error, so each material gets the finish its name says it has. A model that mixes metal and
+ * paint deliberately is left as it is.
+ */
+function fixBareMetal(doc) {
+  const materials = doc.getRoot().listMaterials();
+  const bare = materials.filter((m) => m.getMetallicFactor() >= 0.99 && !m.getMetallicRoughnessTexture());
+  if (!materials.length || bare.length / materials.length < 0.95) return 0;
+  const finish = [
+    [/mirror/i, 1, 0.05],
+    [/chrome/i, 1, 0.15],
+    [/glass|clearled|led/i, 0, 0.08],
+    [/paint/i, 0, 0.3],
+    [/carbon/i, 0, 0.42],
+    [/tyre|tire|wheel/i, 0, 0.78],
+    [/decal|number|drivercolor|lcd/i, 0, 0.38],
+  ];
+  for (const m of bare) {
+    const [, metal, rough] = finish.find(([re]) => re.test(m.getName())) ?? [null, 0, Math.max(m.getRoughnessFactor(), 0.5)];
+    m.setMetallicFactor(metal);
+    m.setRoughnessFactor(rough);
+  }
+  return bare.length;
+}
+
 export async function prepare(source, target, { plain = false } = {}) {
   await MeshoptEncoder.ready;
   const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ "meshopt.encoder": MeshoptEncoder });
@@ -189,6 +217,9 @@ export async function prepare(source, target, { plain = false } = {}) {
       if (base) base.setImage(await repaint(base.getImage()));
     }
   }
+
+  const fixed = fixBareMetal(doc);
+  if (fixed) console.log(`Every material was bare metal (an export error): gave ${fixed} materials their real finish`);
 
   console.log("Dropping vertex data no material reads");
   const usedSets = new Set([0]);

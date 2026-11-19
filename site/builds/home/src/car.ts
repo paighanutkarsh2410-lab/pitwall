@@ -126,10 +126,16 @@ function fit(object: THREE.Object3D, yawToNoseMinusX: number): THREE.Group {
  * Finds the four wheels in a model where they are part of the body meshes, and moves each into
  * its own group pivoting on its axle (car space: nose along -X, axles along Z, floor at y = 0).
  *
- * A tyre's tread sits outboard of the bodywork at about half its own height, so triangles out
- * there, between 0.2 m and 0.55 m up, cluster at the two axles. Each wheel is then every
- * outboard triangle within a tyre's radius of its axle centre. Those triangles leave the body
- * mesh (its index shrinks) and join a mesh of their own sharing the same vertex buffers.
+ * 1. The axles: a tyre's tread sits outboard of the bodywork at about half its own height, so
+ *    triangles out there, between 0.2 m and 0.55 m up, cluster at the front and rear axles.
+ * 2. The wheels: each mesh is split into connected pieces (triangles sharing vertices). A piece
+ *    joins a wheel only if all of it lies inside that wheel's cylinder: a tyre, a rim, a hub nut.
+ *    A piece reaching outside it (a suspension arm, a wing endplate, a brake duct fixed to the
+ *    upright) stays with the body. So a tyre is never half taken, which would leave a torn,
+ *    sawtooth edge once the taken half turns.
+ *    Of those, only pieces centred on the axle turn (tyre, rim, nut); an off-centre one inside the
+ *    wheel (a duct vane, a tether) would swing around the axle, so it stays still.
+ * 3. The pivots: each wheel turns about the centre of its tyre, measured, not assumed.
  */
 function separateWheels(root: THREE.Group, body: THREE.Object3D): THREE.Object3D[] {
   const meshes: THREE.Mesh[] = [];
@@ -138,72 +144,144 @@ function separateWheels(root: THREE.Group, body: THREE.Object3D): THREE.Object3D
   });
   const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
   const v = new THREE.Vector3();
-  const centroid = (pos: THREE.BufferAttribute, m: THREE.Matrix4, a: number, b: number, c: number) => {
-    const out = new THREE.Vector3();
-    for (const k of [a, b, c]) out.add(v.fromBufferAttribute(pos, k).applyMatrix4(m));
-    return out.divideScalar(3);
-  };
 
-  // 1. Where are the axles? Outboard tread triangles, split into front (x < 0) and rear.
+  // Every mesh's vertices in car space, computed once.
+  const spaces = meshes.map((mesh) => {
+    const m = new THREE.Matrix4().multiplyMatrices(toRoot, mesh.matrixWorld);
+    const pos = mesh.geometry.getAttribute("position") as THREE.BufferAttribute;
+    const xyz = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(m);
+      xyz[i * 3] = v.x;
+      xyz[i * 3 + 1] = v.y;
+      xyz[i * 3 + 2] = v.z;
+    }
+    return { mesh, matrix: m, xyz };
+  });
+
+  // 1. The axles.
   const front: number[] = [];
   const rear: number[] = [];
   let maxZ = 0;
   const box = new THREE.Box3().setFromObject(body);
   const halfWidth = Math.max(Math.abs(box.min.z), Math.abs(box.max.z));
   const outboard = halfWidth * 0.72;
-  for (const mesh of meshes) {
-    const m = new THREE.Matrix4().multiplyMatrices(toRoot, mesh.matrixWorld);
-    const pos = mesh.geometry.getAttribute("position") as THREE.BufferAttribute;
+  for (const { mesh, xyz } of spaces) {
     const index = mesh.geometry.index!;
     for (let t = 0; t < index.count; t += 3) {
-      const c = centroid(pos, m, index.getX(t), index.getX(t + 1), index.getX(t + 2));
-      if (Math.abs(c.z) > outboard && c.y > 0.2 && c.y < 0.55 && Math.abs(c.x) < LENGTH * 0.42) {
-        (c.x < 0 ? front : rear).push(c.x);
-        maxZ = Math.max(maxZ, Math.abs(c.z));
+      let x = 0, y = 0, z = 0;
+      for (let k = 0; k < 3; k++) {
+        const i = index.getX(t + k) * 3;
+        x += xyz[i];
+        y += xyz[i + 1];
+        z += xyz[i + 2];
+      }
+      x /= 3;
+      y /= 3;
+      z /= 3;
+      if (Math.abs(z) > outboard && y > 0.2 && y < 0.55 && Math.abs(x) < LENGTH * 0.42) {
+        (x < 0 ? front : rear).push(x);
+        maxZ = Math.max(maxZ, Math.abs(z));
       }
     }
   }
   if (front.length < 50 || rear.length < 50) return [];
   const median = (a: number[]) => a.sort((p, q) => p - q)[a.length >> 1];
   const axles = [median(front), median(rear)];
-  const radius = 0.36; // an F1 tyre is about 0.72 m across
+  const REACH = 0.47; // a tyre's radius (about 0.36 m) with room for the axle estimate being off
+  const inner = maxZ - 0.55; // a wheel's inboard face is well within this of the car's outer edge
 
-  // 2. Each wheel: outboard triangles within a tyre's radius of its axle centre.
+  // 2. Connected pieces wholly inside a wheel's cylinder, and centred on its axle.
+  type Piece = { wheel: string; box: THREE.Box3 };
+  const found = spaces.map(({ mesh, xyz }) => {
+    const index = mesh.geometry.index!;
+    const n = xyz.length / 3;
+    // Union-find over the vertices the triangles join.
+    const parent = new Int32Array(n);
+    for (let i = 0; i < n; i++) parent[i] = i;
+    const find = (i: number): number => {
+      while (parent[i] !== i) {
+        parent[i] = parent[parent[i]];
+        i = parent[i];
+      }
+      return i;
+    };
+    for (let t = 0; t < index.count; t += 3) {
+      const a = find(index.getX(t));
+      for (const k of [1, 2]) {
+        const b = find(index.getX(t + k));
+        if (a !== b) parent[b] = a;
+      }
+    }
+    // Which wheel each piece fits inside ("" for none), and its extent.
+    const pieces = new Map<number, Piece>();
+    for (let i = 0; i < n; i++) {
+      const r = find(i);
+      const piece = pieces.get(r);
+      if (piece?.wheel === "") continue;
+      const x = xyz[i * 3], y = xyz[i * 3 + 1], z = xyz[i * 3 + 2];
+      let wheel = "";
+      if (Math.abs(z) > inner) {
+        for (const [k, ax] of axles.entries()) {
+          if (Math.hypot(x - ax, y - 0.36) < REACH) wheel = `${k ? "R" : "F"}${z < 0 ? "L" : "R"}`;
+        }
+      }
+      if (!piece) pieces.set(r, { wheel, box: new THREE.Box3().expandByPoint(v.set(x, y, z)) });
+      else if (piece.wheel !== wheel) piece.wheel = "";
+      else piece.box.expandByPoint(v.set(x, y, z));
+    }
+    return { find, pieces };
+  });
+  // Each wheel's centre, from its tyre-sized pieces (or everything it found, if none).
+  const centres = new Map<string, THREE.Vector3>();
+  for (const big of [true, false]) {
+    const boxes = new Map<string, THREE.Box3>();
+    for (const { pieces } of found) {
+      for (const { wheel, box } of pieces.values()) {
+        if (!wheel || centres.has(wheel) || (big && box.max.y - box.min.y < 0.5)) continue;
+        if (!boxes.has(wheel)) boxes.set(wheel, new THREE.Box3());
+        boxes.get(wheel)!.union(box);
+      }
+    }
+    for (const [wheel, box] of boxes) centres.set(wheel, box.getCenter(new THREE.Vector3()));
+  }
+  // A piece turns with its wheel only if it is centred on the axle, as a tyre, rim or nut is.
+  const centred = (p: Piece) => {
+    const c = centres.get(p.wheel);
+    if (!c) return false;
+    const m = p.box.getCenter(new THREE.Vector3());
+    return Math.hypot(m.x - c.x, m.y - c.y) < 0.07;
+  };
   const groups = new Map<string, { mesh: THREE.Mesh; matrix: THREE.Matrix4; tris: number[] }[]>();
-  for (const mesh of meshes) {
-    const m = new THREE.Matrix4().multiplyMatrices(toRoot, mesh.matrixWorld);
-    const pos = mesh.geometry.getAttribute("position") as THREE.BufferAttribute;
+  spaces.forEach(({ mesh, matrix }, s_) => {
+    const { find, pieces } = found[s_];
     const index = mesh.geometry.index!;
     const keep: number[] = [];
     const taken = new Map<string, number[]>();
     for (let t = 0; t < index.count; t += 3) {
-      const a = index.getX(t), b = index.getX(t + 1), c3 = index.getX(t + 2);
-      const c = centroid(pos, m, a, b, c3);
-      let wheel: string | null = null;
-      if (Math.abs(c.z) > outboard * 0.92) {
-        for (const [i, ax] of axles.entries()) {
-          if (Math.hypot(c.x - ax, c.y - radius) < radius * 1.04) wheel = `${i ? "R" : "F"}${c.z < 0 ? "L" : "R"}`;
-        }
+      const a = index.getX(t), b = index.getX(t + 1), c = index.getX(t + 2);
+      const piece = pieces.get(find(a));
+      if (!piece?.wheel || !centred(piece)) {
+        keep.push(a, b, c);
+        continue;
       }
-      if (wheel) {
-        if (!taken.has(wheel)) taken.set(wheel, []);
-        taken.get(wheel)!.push(a, b, c3);
-      } else keep.push(a, b, c3);
+      if (!taken.has(piece.wheel)) taken.set(piece.wheel, []);
+      taken.get(piece.wheel)!.push(a, b, c);
     }
-    if (!taken.size) continue;
+    if (!taken.size) return;
     mesh.geometry.setIndex(keep);
     for (const [wheel, tris] of taken) {
       if (!groups.has(wheel)) groups.set(wheel, []);
-      groups.get(wheel)!.push({ mesh, matrix: m, tris });
+      groups.get(wheel)!.push({ mesh, matrix, tris });
     }
-  }
+  });
 
-  // 3. A pivot per wheel at its axle centre, holding the wheel's triangles.
+  // 3. A pivot per wheel at the measured centre of what it took.
   const wheels: THREE.Object3D[] = [];
   for (const [wheel, parts] of groups) {
     const pivot = new THREE.Group();
     pivot.name = `wheel_${wheel}`;
-    pivot.position.set(axles[wheel[0] === "F" ? 0 : 1], radius, (wheel[1] === "L" ? -1 : 1) * (maxZ * 0.9));
+    pivot.position.copy(centres.get(wheel)!);
     const offset = new THREE.Matrix4().makeTranslation(-pivot.position.x, -pivot.position.y, -pivot.position.z);
     for (const { mesh, matrix, tris } of parts) {
       const geometry = new THREE.BufferGeometry();
