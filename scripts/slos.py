@@ -196,7 +196,7 @@ def symptom_alerts() -> dict:
             ),
             alert(
                 "PitwallLinkDown",
-                "max(pitwall_uplink_link_up) == 0",
+                'max(pitwall_uplink_link_up{app_kubernetes_io_name="uplink"}) == 0',
                 "1m",
                 "page",
                 "The trackside link is down: the factory is getting no data (it is buffered)",
@@ -212,7 +212,7 @@ def symptom_alerts() -> dict:
             ),
             alert(
                 "PitwallUplinkBacklog",
-                "max(pitwall_uplink_backlog_messages) > 50000",
+                'max(pitwall_uplink_backlog_messages{app_kubernetes_io_name="uplink"}) > 50000',
                 "5m",
                 "ticket",
                 "{{ $value }} trackside events are waiting for the link",
