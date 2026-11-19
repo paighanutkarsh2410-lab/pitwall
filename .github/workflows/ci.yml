@@ -79,7 +79,7 @@ jobs:
           helm template keda kedacore/keda --version 2.21.0 -f ../platform/keda.yaml > /dev/null
           helm template chaos-mesh chaos-mesh/chaos-mesh --version 2.8.6 -f ../platform/chaos-mesh.yaml > /dev/null
       - name: Scripts parse
-        run: for s in scripts/*.sh; do bash -n "$s"; done
+        run: for s in pitwall scripts/*.sh; do bash -n "$s"; done
 
   security:
     name: Trivy scan of the source

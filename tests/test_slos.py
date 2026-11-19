@@ -24,6 +24,13 @@ def test_the_committed_rules_match_the_slos():
     assert slos.OUTPUT.read_text(encoding="utf-8") == slos.render(), "Run: python scripts/slos.py"
 
 
+def test_the_slo_page_matches_the_slos():
+    page = slos.PAGE.read_text(encoding="utf-8")
+    assert page == slos.render_page(), "Run: python scripts/slos.py"
+    assert all(slo.name in page for slo in slos.SLOS)
+    assert "`PitwallLinkDown`" in page and "43 min" in page  # 1% of 30 days
+
+
 def test_page_alerts_use_the_sre_workbook_burn_rates():
     page = rules()["PitwallTelemetryFreshnessBudgetPage"]["expr"]
     # A 99% objective leaves a 1% budget: page at 14.4x (1h, confirmed 5m) or 6x (6h, 30m).

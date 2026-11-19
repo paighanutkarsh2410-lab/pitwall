@@ -112,26 +112,29 @@ measured stage by stage, and the SLOs are about what the pit wall's users feel:
 | Timing-board updates go out within 1 s of their oldest event | 99% |
 | Events pass the schema | 99.9% |
 | API requests succeed | 99.5% |
+| Trackside link outages caught up within 60 s (tickets, never pages) | 99% |
 
 They are code ([`scripts/slos.py`](scripts/slos.py)) that generates the SRE workbook's
-multi-window burn-rate alerts, each linked to a [runbook](docs/runbooks/README.md). Grafana's
+multi-window burn-rate alerts, each linked to a [runbook](docs/runbooks/README.md), and the
+[SLO page](docs/slos.md) listing every SLO, its error budget and every alert. Grafana's
 **Pitwall · Race health** dashboard is code too. In the first drill, an injected 800 ms delay paged
 within a minute and cleared on its own once removed. Details, and what running it uncovered, in
 [docs/observability.md](docs/observability.md).
 
 ## Run it
 
-You need Docker (the whole platform uses about 5 GB of memory), [kind](https://kind.sigs.k8s.io),
-`kubectl` and Helm, and Python 3.12+ for the CLI.
+You need Docker with about 10 GB of memory, [kind](https://kind.sigs.k8s.io), `kubectl` and Helm.
 
 ```bash
-pip install -e .
-pitwall fetch 2024-sao-paulo       # download a race once (about 6 minutes)
-./scripts/cluster-up.sh            # kind, Traefik, Argo CD; Argo CD deploys the rest
+./pitwall up        # a race, the cluster, Argo CD and everything it deploys; waits until it's live
+./pitwall status    # what's running, and where to look
+./pitwall down      # delete the cluster (downloaded races are kept)
 ```
 
-Then open **http://localhost:8080** (or http://pitwall.localtest.me:8080). The replayer starts
-São Paulo 2024 at real speed and loops it. Grafana is at http://grafana.pitwall.localtest.me:8080,
+The first `up` takes about 15 minutes: it downloads São Paulo 2024 from OpenF1 with Pitwall's own
+image (no Python needed), creates a kind cluster with Traefik and Argo CD, and waits until Argo CD
+has deployed everything and the race is on the pit wall. Then open **http://localhost:8080** (or
+http://pitwall.localtest.me:8080). The replayer plays the race at real speed and loops it. Grafana is at http://grafana.pitwall.localtest.me:8080,
 Prometheus at http://prometheus.pitwall.localtest.me:8080 and Argo CD at
 http://argocd.pitwall.localtest.me:8080.
 
@@ -221,7 +224,7 @@ ignored by Git and mounted into the cluster. Without them, the pit wall shows te
 | `deploy/load/`, `scripts/loadtest.sh` | The k6 load test |
 | `deploy/chaos/`, `scripts/gameday.py` | GameDay experiments and the runner that judges them |
 | `scripts/chaos-suite.sh` | The nightly chaos suite on a throwaway cluster |
-| `scripts/cluster-up.sh` | The kind cluster, Traefik and Argo CD |
+| `pitwall`, `scripts/cluster-up.sh` | One command to run it all; the kind cluster, Traefik and Argo CD |
 | `docs/runbooks/` | A runbook for every alert |
 | `schemas/` | Generated JSON Schema for events |
 | `tests/` | Unit tests, no network or cluster needed |
