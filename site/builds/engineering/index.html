@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pitwall · How it is built</title>
+<meta name="description" content="How Pitwall carries a race from the track to a browser: the pipeline, self-healing releases, a link you can cut, a race weekend at scale and the SLOs, with the measurements.">
+<meta name="theme-color" content="#e8ebee">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23e8ebee'/><path d='M6 22 L13 10 L19 18 L26 8' fill='none' stroke='%2313171c' stroke-width='2.5'/><circle cx='19' cy='18' r='3' fill='%23c23510'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,300..900;1,62..125,300..900&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="scrollcraft.css">
+<link rel="stylesheet" href="eng.css">
+</head>
+<body>
+
+<span data-sc-progress></span>
+
+<header class="strip">
+  <a class="strip__mark" href="../">Pitwall</a>
+  <nav class="strip__tabs" aria-label="Site">
+    <a href="../">Race</a>
+    <a href="../pitwall/">Pit wall</a>
+    <a href="./" aria-current="page">Engineering</a>
+  </nav>
+</header>
+
+<!-- The folio: the only fixed chrome. Chapter number and title, updating as chapters pass. -->
+<p class="folio" aria-hidden="true"><span class="folio__n">00</span><span class="folio__t">Title</span></p>
+
+<main>
+
+  <!-- TITLE PAGE: type on paper, no media above the fold. -->
+  <section class="chapter chapter--title" data-sc-act="flow" data-chapter="00" data-title="Title">
+    <div class="sc-wrap title" data-sc-in data-sc-stagger="80">
+      <p class="eyebrow">Engineering</p>
+      <h1 class="title__h">How the pit wall is built.</h1>
+      <p class="title__lede">A race goes in at the track and comes out on a screen, through two sites, six services and a link that can fail. Every number on this page was measured on this project.</p>
+    </div>
+  </section>
+
+  <!-- 1 · THE PIPELINE: the held chapter. The drawing builds, then one real event crosses it. -->
+  <section class="chapter chapter--pipeline" data-sc-act="pin" data-sc-span="2.4" data-chapter="01" data-title="The pipeline">
+    <div data-sc-stage class="pipeline">
+      <div class="pipeline__copy">
+        <h2 class="ch-title">One lap, end to end.</h2>
+        <p class="ch-body">Verstappen completes lap 44 at Interlagos in <span class="mono">1:23.884</span>, the lap he takes the lead. This is that event, carried the way every event is.</p>
+        <ol class="stamps" aria-label="Where the event goes, and how long each stage takes">
+          <li data-at="0"><b>Replayer</b> sends it at the track, as it happened</li>
+          <li data-at="2"><b>Uplink</b> forwards it to the factory, through a link that can be cut</li>
+          <li data-at="5"><b>Ingest</b> checks it against the schema: <span class="mono">0.10</span>&nbsp;s after it was sent, p99</li>
+          <li data-at="8"><b>Timing</b> puts it on the board: <span class="mono">0.49</span>&nbsp;s, p99 (the board publishes once a second)</li>
+          <li data-at="12"><b>The browser</b> gets it in the next frame: one every <span class="mono">200</span>&nbsp;ms</li>
+        </ol>
+      </div>
+      <figure class="drawing">
+        <svg class="drawing__svg" viewBox="0 0 1000 640" role="img" aria-label="The pipeline: replayer, trackside Redpanda and uplink at the track; Toxiproxy as the link; Redpanda, ingest, timing, strategy, TimescaleDB and pitwall-api at the factory; then the browser.">
+          <g class="frame">
+            <rect class="site" x="20" y="60" width="230" height="520" rx="4" pathLength="1"/>
+            <text class="site__label" x="32" y="52">Trackside</text>
+            <rect class="site" x="400" y="60" width="580" height="520" rx="4" pathLength="1"/>
+            <text class="site__label" x="412" y="52">Factory</text>
+          </g>
+          <g class="wires">
+            <path class="wire" pathLength="1" d="M135 150 V270"/>
+            <path class="wire" pathLength="1" d="M135 330 V450"/>
+            <path class="wire wire--link" pathLength="1" d="M200 480 H320"/>
+            <path class="wire" pathLength="1" d="M375 480 H440"/>
+            <path class="wire" pathLength="1" d="M500 450 V330"/>
+            <path class="wire" pathLength="1" d="M555 300 H640 V200 H680"/>
+            <path class="wire" pathLength="1" d="M555 300 H640 V400 H680"/>
+            <path class="wire" pathLength="1" d="M500 270 V160"/>
+            <path class="wire" pathLength="1" d="M780 200 H820 V290 H850"/>
+            <path class="wire" pathLength="1" d="M780 400 H820 V310 H850"/>
+            <path class="wire wire--out" pathLength="1" d="M910 330 V470"/>
+          </g>
+          <g class="nodes">
+            <g class="node" transform="translate(70 90)"><rect width="130" height="60" pathLength="1"/><text x="65" y="36">replayer</text></g>
+            <g class="node" transform="translate(70 270)"><rect width="130" height="60" pathLength="1"/><text x="65" y="36">Redpanda</text></g>
+            <g class="node" transform="translate(70 450)"><rect width="130" height="60" pathLength="1"/><text x="65" y="36">uplink</text></g>
+            <g class="node node--link" transform="translate(320 450)"><rect width="55" height="60" pathLength="1"/><text x="27" y="36">link</text></g>
+            <g class="node" transform="translate(440 450)"><rect width="120" height="60" pathLength="1"/><text x="60" y="36">Redpanda</text></g>
+            <g class="node" transform="translate(445 270)"><rect width="110" height="60" pathLength="1"/><text x="55" y="36">ingest</text></g>
+            <g class="node" transform="translate(430 100)"><rect width="140" height="60" pathLength="1"/><text x="70" y="36">TimescaleDB</text></g>
+            <g class="node" transform="translate(680 170)"><rect width="100" height="60" pathLength="1"/><text x="50" y="36">timing</text></g>
+            <g class="node" transform="translate(680 370)"><rect width="100" height="60" pathLength="1"/><text x="50" y="36">strategy</text></g>
+            <g class="node" transform="translate(850 270)"><rect width="120" height="60" pathLength="1"/><text x="60" y="36">pitwall-api</text></g>
+            <g class="node node--out" transform="translate(850 470)"><rect width="120" height="60" pathLength="1"/><text x="60" y="36">browser</text></g>
+          </g>
+          <g class="dims">
+            <path class="dim" d="M200 540 H320" pathLength="1"/>
+            <text class="dim__label" x="260" y="562">Toxiproxy</text>
+          </g>
+          <!-- The route the event takes: replayer > Redpanda > uplink > link > Redpanda > ingest > timing > api > browser -->
+          <path class="route" d="M135 120 V300 V480 H347 H500 V300 H640 V200 H730 V200 H820 V300 H910 V500" fill="none"/>
+          <g class="event">
+            <circle r="9"/>
+            <text class="event__label" x="14" y="-12">VER · lap 44</text>
+          </g>
+          <g class="stamp-marks">
+            <text class="stamp" data-at="5" x="455" y="258">+0.10 s</text>
+            <text class="stamp" data-at="8" x="690" y="160">+0.49 s</text>
+            <text class="stamp" data-at="12" x="860" y="560">next frame</text>
+          </g>
+        </svg>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 2 · RELEASES -->
+  <section class="chapter chapter--releases" data-sc-act="flow" data-chapter="02" data-title="Releases">
+    <div class="sc-wrap spread">
+      <div class="spread__head" data-sc-reveal="up" data-sc-reveal-at="0.05 0.35">
+        <h2 class="ch-title">Releases that roll themselves back.</h2>
+      </div>
+      <div class="spread__body" data-sc-in data-sc-stagger="60">
+        <p class="ch-body">Every service ships as a canary: one new pod beside the stable ones, judged on its own metrics before it is promoted. Three bad releases were shipped on purpose. Each was caught and removed with no one involved, and the stable pods served throughout.</p>
+        <table class="evidence">
+          <thead><tr><th scope="col">Bad release</th><th scope="col">What caught it</th><th scope="col">Caught after</th></tr></thead>
+          <tbody>
+            <tr><td>Slow ingest (every batch waits 900 ms)</td><td>freshness p99 <span class="mono">4.96</span>&nbsp;s against <span class="mono">0.5</span>&nbsp;s</td><td class="mono">1 min 48 s</td></tr>
+            <tr><td>Timing with gaps 50% too big</td><td><span class="mono">94%</span> of its gaps disagreed with the stable board</td><td class="mono">1 min 53 s</td></tr>
+            <tr><td>Strategy that crashes after 20 s</td><td><span class="mono">2</span> restarts at the first check</td><td class="mono">1 min 23 s</td></tr>
+          </tbody>
+        </table>
+        <p class="ch-note">One release passed every check and still refused every browser: a load test caught it. The api canary now opens a WebSocket the way the pit wall does before it is promoted.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · THE LINK: the one dark chapter. -->
+  <section class="chapter chapter--link" data-sc-act="flow" data-chapter="03" data-title="The link">
+    <div class="sc-wrap link">
+      <h2 class="ch-title" data-sc-in>A link you can cut.</h2>
+      <p class="ch-body" data-sc-in>The track and the factory are separate sites. Cut the line between them for a minute mid-race and the track keeps everything; when the line returns, the factory catches up.</p>
+      <dl class="figures">
+        <div><dt>Outage</dt><dd><span data-sc-count="0 70.3">70.3</span><span class="u">s</span></dd></div>
+        <div><dt>Events waiting at the track</dt><dd><span data-sc-count="0 10,200">10,200</span></dd></div>
+        <div><dt>Catch-up after the link returned</dt><dd><span data-sc-count="0 1.1">1.1</span><span class="u">s</span></dd></div>
+        <div class="figures__zero"><dt>Events lost, of 18,309</dt><dd>0</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- 4 · SCALE -->
+  <section class="chapter chapter--scale" data-sc-act="flow" data-chapter="04" data-title="Scale">
+    <div class="sc-wrap spread spread--flip">
+      <div class="spread__body" data-sc-in data-sc-stagger="60">
+        <h2 class="ch-title">A race weekend at scale.</h2>
+        <p class="ch-body">A load test sends 200 browsers at a replay running twenty times faster than the race, about 3,100 events a second. Ingest and the API scale on what matters (lag and connected browsers), not CPU.</p>
+        <table class="evidence">
+          <thead><tr><th scope="col">Load test, 200 browsers</th><th scope="col">Result</th></tr></thead>
+          <tbody>
+            <tr><td>Browsers that connected</td><td class="mono">1,182 of 1,182</td></tr>
+            <tr><td>Frames a second, each browser</td><td class="mono">4.89 of 5</td></tr>
+            <tr><td>Gap between frames, p99</td><td class="mono">205 ms</td></tr>
+            <tr><td>API CPU per 100 browsers</td><td class="mono">0.30 to 0.38 cores</td></tr>
+          </tbody>
+        </table>
+        <table class="evidence">
+          <thead><tr><th scope="col">GameDay</th><th scope="col">Result</th></tr></thead>
+          <tbody>
+            <tr><td>Kill the factory broker</td><td>0 lost; the link-down page fired as designed</td></tr>
+            <tr><td>Crash a processor (SIGKILL)</td><td>0 lost; no pit stop counted twice</td></tr>
+            <tr><td>200 ms on every broker reply</td><td>browsers <span class="mono">2</span>&nbsp;s behind, steady; no page</td></tr>
+            <tr><td>A slow database disk</td><td>browsers stayed at <span class="mono">0.10</span>&nbsp;s while history caught up</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figure class="scale__plate" aria-hidden="true">
+        <div class="plate plate--back" data-sc-parallax="-0.9"></div>
+        <div class="plate plate--front" data-sc-parallax="0.5">
+          <svg viewBox="0 0 300 300" role="img" aria-label="During the load test, ingest scaled from 2 to 4 pods and the API from 1 to 2">
+            <text class="plate__label" x="20" y="44">ingest · lag</text>
+            <rect class="pod" x="20" y="60" width="40" height="40" rx="3"/><rect class="pod" x="72" y="60" width="40" height="40" rx="3"/><rect class="pod pod--new" x="124" y="60" width="40" height="40" rx="3"/><rect class="pod pod--new" x="176" y="60" width="40" height="40" rx="3"/>
+            <text class="plate__note" x="20" y="128">2 → 4 pods</text>
+            <text class="plate__label" x="20" y="184">pitwall-api · browsers</text>
+            <rect class="pod" x="20" y="200" width="40" height="40" rx="3"/><rect class="pod pod--new" x="72" y="200" width="40" height="40" rx="3"/>
+            <text class="plate__note" x="20" y="268">1 → 2 pods</text>
+          </svg>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 5 · SLOs -->
+  <section class="chapter chapter--slos" data-sc-act="flow" data-chapter="05" data-title="SLOs">
+    <div class="sc-wrap slos" data-sc-in data-sc-stagger="50">
+      <h2 class="ch-title">Five promises, measured.</h2>
+      <ul class="slo-list">
+        <li><span class="mono">99%</span> of car telemetry reaches the pit wall within 500 ms</li>
+        <li><span class="mono">99%</span> of timing-board updates go out within 1 s</li>
+        <li><span class="mono">99.9%</span> of events pass the schema</li>
+        <li><span class="mono">99.5%</span> of pit-wall API requests succeed</li>
+        <li><span class="mono">99%</span> of link outages are caught up within 60 s</li>
+      </ul>
+      <p class="ch-note">They are code, and the alerts are generated from them. In the first drill, an 800 ms delay injected into the API paged within a minute and cleared on its own once removed.</p>
+    </div>
+  </section>
+
+  <!-- COLOPHON: small type, the invitation as running text. -->
+  <section class="chapter chapter--colophon" data-sc-act="flow" data-chapter="06" data-title="Colophon">
+    <div class="sc-wrap colophon">
+      <p>Run it yourself: clone <a href="https://github.com/paighanutkarsh2410-lab/pitwall">the repository</a> and type <code>./pitwall up</code>. Or go back to <a href="../">the race</a>, or <a href="../pitwall/">open the pit wall</a>.</p>
+      <p class="colophon__stack">Kubernetes (kind), Argo CD, Argo Rollouts, Redpanda, TimescaleDB, Prometheus, Grafana, Loki, Tempo, OpenTelemetry, KEDA, Chaos Mesh, k6, Toxiproxy. Services in Python; the pit wall in React.</p>
+      <p class="colophon__small">Unofficial personal project. Not associated with Formula 1, the FIA, any team or broadcaster. Race data from <a href="https://openf1.org">OpenF1</a>.</p>
+    </div>
+  </section>
+
+</main>
+
+<script src="scrollcraft.js"></script>
+<script>ScrollCraft.mount(document.body);</script>
+<script src="eng.js"></script>
+</body>
+</html>
