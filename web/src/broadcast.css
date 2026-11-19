@@ -163,3 +163,63 @@ a.choose-race {
 }
 a.change-race { color: var(--fg); text-underline-offset: 3px; }
 a.change-race:hover { color: var(--accent); }
+
+/* ---- Race trace: the field quiet, the followed team bold and labelled --------------------- */
+.trace svg { width: 100%; height: auto; display: block; padding: 4px 6px 2px; }
+.trace .grid { stroke: var(--line); }
+.trace .grid.zero { stroke: var(--line-2); }
+.trace .axis { fill: var(--faint); font: 10px var(--mono); }
+.trace polyline { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.trace .theirs { stroke: #7d828c; stroke-width: 1; opacity: 0.38; }
+.trace .ours polyline { stroke-width: 2.8; }
+.trace .pit-dot { fill: var(--bg); stroke-width: 2; }
+.trace .sc-band { fill: rgb(255 210 63 / 0.09); }
+.trace .leader-line { stroke-width: 1; opacity: 0.45; }
+.trace .label { font: 800 11.5px var(--mono); }
+.trace .label-gap { font-weight: 500; fill: var(--muted); }
+.sc-key { display: inline-block; width: 12px; height: 9px; margin: 0 2px -1px; background: rgb(255 210 63 / 0.3); }
+
+/* ---- Telemetry: the chart fills the panel -------------------------------------------------- */
+.compare { display: flex; flex-direction: column; }
+.compare .trace-canvas { flex: 1; min-height: 230px; margin: 8px 10px 10px; border-radius: 0; background: rgb(255 255 255 / 0.02); }
+.compare .gauge-rows { padding-top: 10px; gap: 6px; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { display: inline-block; width: 18px; height: 2px; background: currentColor; }
+.swatch.dashed { background: repeating-linear-gradient(90deg, currentColor 0 5px, transparent 5px 8px); }
+
+/* ---- Strategy: a lap scale, tyre-marked stints, the tyre on now ----------------------------- */
+.strategy .stints { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; padding: 8px 12px 12px; }
+.stint-col { display: grid; gap: 4px; align-content: start; }
+.strategy .stint-row { grid-template-columns: 62px 1fr 50px 50px; gap: 10px; min-height: 18px; }
+.strategy .stint-row.ours { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.strategy .stint-row.ours .stint-track { outline: none; }
+.stint-row .code .pos { display: inline-block; width: 18px; color: var(--faint); font-family: var(--mono); font-weight: 500; }
+.strategy .stint-track { height: 14px; border-radius: 0; background: rgb(255 255 255 / 0.035); }
+.strategy .stint {
+  top: 1px; bottom: 1px; border-radius: 0; display: flex; align-items: center; justify-content: center;
+  color: #111; font: 800 9px/1 var(--mono); box-shadow: inset -2px 0 0 rgb(0 0 0 / 0.55);
+}
+.strategy .gridline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+.strategy .now { top: -2px; bottom: -2px; width: 2px; background: var(--fg); opacity: 0.55; }
+.stint-scale .stint-track { background: none; height: 12px; }
+.stint-scale .tick { position: absolute; transform: translateX(-50%); font: 9.5px/12px var(--mono); color: var(--faint); }
+.stint-scale .tick.end { right: 0; transform: none; }
+.tyre-now { display: inline-flex; align-items: center; gap: 6px; }
+.tyre-chip {
+  display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1.5px solid; border-radius: 50%;
+  font: 800 9px/1 var(--mono);
+}
+.strategy .deg { text-align: right; color: var(--muted); }
+.strategy .deg.faster { color: var(--green, #3ddc6a); }
+@media (max-width: 800px) { .strategy .stints { grid-template-columns: minmax(0, 1fr); } }
+/* Phones: the transport wraps, the timing table scrolls inside its panel, and the strategy
+   scale keeps only its first and last lap. */
+@media (max-width: 800px) {
+  .transport { flex-wrap: wrap; max-width: 100%; }
+  .transport .seek { flex: 1 1 100%; min-width: 0; }
+  .transport .seek input { width: 100%; min-width: 0; }
+  .timing { overflow-x: auto; max-width: 100%; }
+  .stint-scale .tick:not(:first-child):not(.end) { display: none; }
+  .top { padding-left: 12px; padding-bottom: 10px; }
+  .brand { margin-left: -12px; }
+}

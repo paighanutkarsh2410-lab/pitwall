@@ -69,3 +69,11 @@ export function onColour(hex: string): string {
 export function teamColour(colour: string | null | undefined): string {
   return colour && /^[0-9a-f]{6}$/i.test(colour) ? `#${colour}` : "#8a8f98";
 }
+
+/** A team colour mixed towards white: the second car of a team, told apart from the first. */
+export function shade(hex: string, towardsWhite: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const mix = (c: number) => Math.round(c + (255 - c) * towardsWhite);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(mix);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+}

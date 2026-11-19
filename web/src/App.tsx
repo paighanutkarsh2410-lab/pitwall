@@ -87,7 +87,8 @@ export function App() {
     if (!board) return [];
     // The driver chosen on the home page leads the comparison; otherwise the team's first car.
     const first = ours.find((c) => c.car === DRIVER) ?? ours[0];
-    const other = focus != null ? board.cars.find((c) => c.car === focus && c.car !== first?.car) : ours[1];
+    // Against a car picked on the timing screen or map, or else the teammate (never itself).
+    const other = (focus != null ? board.cars.find((c) => c.car === focus && c.car !== first?.car) : undefined) ?? ours.find((c) => c !== first);
     return [first, other].filter((c): c is NonNullable<typeof c> => c != null);
   }, [board, ours, focus]);
   const watchKey = compared.map((c) => c.car).join(",");
@@ -201,7 +202,7 @@ export function App() {
           <div className="side">
             <TeamCars board={board} cars={ours} strategy={strategy} />
           </div>
-          <RaceTrace board={board} team={team} run={board.run} />
+          <RaceTrace board={board} team={team} run={board.run} strategy={strategy} />
           <TelemetryCompare cars={compared} samples={live.samples} />
           <StrategyPanel board={board} strategy={strategy} team={team} />
           <RaceControl messages={board.messages} />
