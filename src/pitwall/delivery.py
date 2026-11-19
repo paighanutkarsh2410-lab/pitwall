@@ -89,11 +89,11 @@ class Recovery:
 class LinkTracker:
     """Follows the uplink through outages: up, then down, then catching up, then up again.
 
-    ``current_within`` is how old a forwarded event may be for the stream to count as current
-    (the factory is "caught up" once the uplink forwards fresh data again).
+    Caught up means: after a batch the factory confirmed, nothing is left unread on any trackside
+    partition. (Offsets of different partitions can't be compared, so "the newest event looks
+    fresh" is not enough: one partition can be current while another is still backlogged.)
     """
 
-    current_within: float = 1.0
     state: str = "up"
     last_ok: float | None = None
     down_since: float | None = None
@@ -110,20 +110,15 @@ class LinkTracker:
         self.state = "down"
         return None
 
-    def sent(self, now: float, newest_age: float | None) -> tuple[Outage | None, Recovery | None]:
-        """A batch reached the factory. ``newest_age``: seconds since the newest event in it
-        was sent by the replayer."""
+    def sent(self, now: float, drained: bool) -> tuple[Outage | None, Recovery | None]:
+        """A batch reached the factory. ``drained``: nothing is left unread at the track."""
         outage = recovery = None
         if self.state == "down":
             self.outage = now - (self.down_since or now)
             self.restored_at = now
             self.state = "catching_up"
             outage = Outage(self.outage, now)
-        if (
-            self.state == "catching_up"
-            and newest_age is not None
-            and newest_age <= self.current_within
-        ):
+        if self.state == "catching_up" and drained:
             recovery = Recovery(self.outage, now - (self.restored_at or now))
             self.history.append(recovery)
             self.state = "up"

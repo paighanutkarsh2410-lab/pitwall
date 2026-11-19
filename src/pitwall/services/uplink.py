@@ -41,7 +41,7 @@ log = logging.getLogger("pitwall.uplink")
 TARGET = os.environ.get("PITWALL_UPLINK_BROKERS", "toxiproxy:19093")
 TOXIPROXY = os.environ.get("PITWALL_TOXIPROXY_URL", "http://toxiproxy:8474").rstrip("/")
 PROXY = os.environ.get("PITWALL_TOXIPROXY_PROXY", "factory-kafka")
-SEND_TIMEOUT = 15.0
+SEND_TIMEOUT = 8.0
 
 tracker = LinkTracker()
 
@@ -90,7 +90,19 @@ async def work(health: Health) -> None:
     producer = None
     health.ready, health.detail = True, f"forwarding {bus.RAW} to {TARGET}"
     log.info("uplink: %s -> %s", bus.brokers(), TARGET)
-    backoff, last_backlog = 1.0, 0.0
+    backoff = 1.0
+
+    async def report_backlog() -> None:
+        # On its own clock: during an outage the forwarding loop is stuck retrying, and the
+        # backlog growing at the track is exactly what must be visible then.
+        while True:
+            try:
+                observe.UPLINK_BACKLOG.set(await backlog(consumer))
+            except Exception as error:
+                log.debug("backlog reading failed: %s", error)
+            await asyncio.sleep(2)
+
+    reporter = asyncio.create_task(report_backlog(), name="uplink-backlog")
     try:
         while True:
             if producer is None:
@@ -119,9 +131,8 @@ async def work(health: Health) -> None:
                     backoff = min(backoff * 2, 5)
                     continue
                 backoff = 1.0
-                newest = max((m for msgs in batches.values() for m in msgs), key=lambda m: m.offset)
-                age = observe.age_seconds(observe.sent_of(newest.headers))
-                outage, recovery = tracker.sent(time.time(), age)
+                drained = not any((await bus.lag_by_topic(consumer)).values())
+                outage, recovery = tracker.sent(time.time(), drained)
                 if outage:
                     observe.UPLINK_OUTAGE.observe(outage.lasted)
                     log.warning("Link back after %.1f s down; catching up", outage.lasted)
@@ -138,10 +149,8 @@ async def work(health: Health) -> None:
                 for msgs in batches.values():
                     for m in msgs:
                         observe.observe_freshness("uplink", m.headers)
-            if time.monotonic() - last_backlog > 2:
-                observe.UPLINK_BACKLOG.set(await backlog(consumer))
-                last_backlog = time.monotonic()
     finally:
+        reporter.cancel()
         await consumer.stop()
         await _drop(producer)
 

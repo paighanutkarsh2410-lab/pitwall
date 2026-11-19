@@ -54,16 +54,16 @@ def test_unnumbered_events_pass_through():
 
 
 def test_an_outage_and_its_catch_up_are_timed():
-    link = LinkTracker(current_within=1.0)
-    link.sent(100.0, 0.2)  # steady: the last good send
+    link = LinkTracker()
+    link.sent(100.0, True)  # steady: the last good send
     link.failed(103.0)  # the link breaks
     link.failed(110.0)  # still broken
-    outage, recovery = link.sent(160.0, 57.0)  # back, sending a 57 s old backlog
+    outage, recovery = link.sent(160.0, False)  # back, with a backlog still at the track
     assert outage is not None and outage.lasted == pytest.approx(60.0)  # from the last good send
     assert recovery is None and link.state == "catching_up"
-    _, recovery = link.sent(170.0, 8.0)  # still behind
+    _, recovery = link.sent(170.0, False)  # still behind
     assert recovery is None
-    _, recovery = link.sent(174.0, 0.4)  # current again
+    _, recovery = link.sent(174.0, True)  # nothing left unread: current again
     assert recovery is not None
     assert recovery.outage == pytest.approx(60.0) and recovery.catch_up == pytest.approx(14.0)
     assert link.state == "up"
@@ -71,5 +71,5 @@ def test_an_outage_and_its_catch_up_are_timed():
 
 def test_a_link_that_never_failed_reports_nothing():
     link = LinkTracker()
-    assert link.sent(1.0, 0.1) == (None, None)
+    assert link.sent(1.0, True) == (None, None)
     assert link.history == []
