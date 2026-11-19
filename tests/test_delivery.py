@@ -47,6 +47,13 @@ def test_a_new_run_starts_the_numbers_again_and_old_runs_are_ignored():
     assert d.run == "run-3"
 
 
+def test_after_a_rebalance_the_next_number_is_not_called_a_gap():
+    d = Deduplicator()
+    d.check("run-1", b"1", 10)
+    d.forget()  # partitions moved away and back; another pod handled 11..40
+    assert d.check("run-1", b"1", 41).missing == 0
+
+
 def test_unnumbered_events_pass_through():
     d = Deduplicator()
     assert not d.check(None, b"1", 3).duplicate

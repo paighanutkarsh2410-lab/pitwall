@@ -59,16 +59,28 @@ def target_producer():
     )
 
 
+async def ends(consumer) -> dict:
+    """The trackside's latest offsets, asked of the broker. (The consumer's cached high-water
+    marks only move when it fetches, and during an outage it isn't fetching.)"""
+    partitions = list(consumer.assignment())
+    return await consumer.end_offsets(partitions) if partitions else {}
+
+
 async def backlog(consumer) -> int:
     """Messages on the trackside the factory hasn't confirmed: the buffer during an outage."""
     total = 0
-    for tp in consumer.assignment():
-        end = consumer.highwater(tp)
-        if end is None:
-            continue
+    for tp, end in (await ends(consumer)).items():
         committed = await consumer.committed(tp)
         total += max(0, end - (committed or 0))
     return total
+
+
+async def drained(consumer) -> bool:
+    """Has everything at the track been read? (Then the batch just confirmed was current.)"""
+    for tp, end in (await ends(consumer)).items():
+        if await consumer.position(tp) < end:
+            return False
+    return True
 
 
 async def rewind(consumer, partitions) -> None:
@@ -131,8 +143,7 @@ async def work(health: Health) -> None:
                     backoff = min(backoff * 2, 5)
                     continue
                 backoff = 1.0
-                drained = not any((await bus.lag_by_topic(consumer)).values())
-                outage, recovery = tracker.sent(time.time(), drained)
+                outage, recovery = tracker.sent(time.time(), await drained(consumer))
                 if outage:
                     observe.UPLINK_OUTAGE.observe(outage.lasted)
                     log.warning("Link back after %.1f s down; catching up", outage.lasted)

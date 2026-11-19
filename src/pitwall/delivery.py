@@ -56,6 +56,10 @@ class Deduplicator:
         self.run: str | None = None
         self.last: dict[bytes, int] = {}
 
+    def forget(self) -> None:
+        """Partitions moved: the keys now owned may have advanced on another pod meanwhile."""
+        self.last = {}
+
     def check(self, run: str | None, key: bytes | None, seq: int | None) -> Verdict:
         if run is None or key is None or seq is None:
             return Verdict()  # not numbered (an older producer): nothing to check

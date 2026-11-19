@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import time
 
+from aiokafka import ConsumerRebalanceListener
 from pydantic import ValidationError
 
 from pitwall import bus, history, observe, tracing
@@ -18,6 +19,17 @@ from pitwall.events import validate
 from pitwall.services import Health, faults_of, service_app
 
 log = logging.getLogger("pitwall.ingest")
+
+
+class ForgetOnRebalance(ConsumerRebalanceListener):
+    def __init__(self, dedupe: Deduplicator) -> None:
+        self.dedupe = dedupe
+
+    async def on_partitions_revoked(self, revoked) -> None:
+        self.dedupe.forget()
+
+    async def on_partitions_assigned(self, assigned) -> None:
+        self.dedupe.forget()
 
 
 def triage(event: dict) -> tuple[str, dict]:
@@ -39,14 +51,17 @@ async def work(health: Health) -> None:
         await history.migrate(pool)
         recorder = history.Recorder(pool)
 
-    consumer = bus.consumer(bus.RAW, group="ingest", auto_offset_reset="earliest")
+    consumer = bus.consumer(group="ingest", auto_offset_reset="earliest")
+    dedupe = Deduplicator()
+    # When partitions move between ingest pods (a canary joining, a restart), the cars they
+    # carry were last seen by another pod: forget their numbers rather than call the jump a gap.
+    consumer.subscribe([bus.RAW], listener=ForgetOnRebalance(dedupe))
     producer = bus.producer()
     await consumer.start()
     await producer.start()
     health.ready, health.detail = True, "consuming pitwall.raw"
     log.info("ingest is consuming %s (history: %s)", bus.RAW, "on" if recorder else "off")
     faults = faults_of("ingest")
-    dedupe = Deduplicator()
     last_lag = 0.0
     try:
         while True:
