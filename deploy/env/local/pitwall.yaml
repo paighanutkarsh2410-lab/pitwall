@@ -1,7 +1,7 @@
 # The local kind cluster (scripts/cluster-up.sh).
 image:
   # CI sets this to the commit it just built, scanned and signed (the "promote" job).
-  tag: 03922d80dd0c65d9642b8e4394c5470df4bd1814
+  tag: 562987c955be41cef32b9d863acd5a515ed79f09
   pullPolicy: IfNotPresent  # tags are commit SHAs: an image never changes under a tag
 races:
   hostPath: /pitwall-data  # the laptop's ~/.pitwall, mounted into the kind node
