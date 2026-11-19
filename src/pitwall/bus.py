@@ -153,15 +153,17 @@ async def lag_by_topic(consumer) -> dict[str, int]:
     return lag
 
 
-async def ensure_topics() -> list[str]:
-    """Creates any missing topics. Safe to run from every service at start-up."""
+async def ensure_topics(only: tuple[str, ...] | None = None) -> list[str]:
+    """Creates any missing topics (all of them, or ``only`` these: the trackside needs just
+    pitwall.raw). Safe to run from every service at start-up."""
     from aiokafka.admin import AIOKafkaAdminClient, NewTopic
 
     admin = AIOKafkaAdminClient(bootstrap_servers=brokers())
     await admin.start()
     try:
         existing = set(await admin.list_topics())
-        missing = [t for t in TOPICS if t.name not in existing]
+        wanted = [t for t in TOPICS if only is None or t.name in only]
+        missing = [t for t in wanted if t.name not in existing]
         if missing:
             await admin.create_topics(
                 [

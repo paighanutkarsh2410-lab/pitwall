@@ -13,6 +13,7 @@ import time
 from pydantic import ValidationError
 
 from pitwall import bus, history, observe, tracing
+from pitwall.delivery import Deduplicator, keyseq_of
 from pitwall.events import validate
 from pitwall.services import Health, faults_of, service_app
 
@@ -45,6 +46,7 @@ async def work(health: Health) -> None:
     health.ready, health.detail = True, "consuming pitwall.raw"
     log.info("ingest is consuming %s (history: %s)", bus.RAW, "on" if recorder else "off")
     faults = faults_of("ingest")
+    dedupe = Deduplicator()
     last_lag = 0.0
     try:
         while True:
@@ -53,6 +55,16 @@ async def work(health: Health) -> None:
                 await faults.pause()
             for messages in batches.values():
                 for message in messages:
+                    verdict = dedupe.check(
+                        bus.run_of(message.headers), message.key, keyseq_of(message.headers)
+                    )
+                    if verdict.missing:
+                        observe.INGEST_MISSING.inc(verdict.missing)
+                        log.error("%d events missing before key %s", verdict.missing, message.key)
+                    if verdict.duplicate:
+                        observe.INGEST_DUPLICATES.inc()
+                        health.count("duplicates")
+                        continue  # re-sent after an outage: already handled
                     observe.observe_freshness("ingest", message.headers)
                     event = bus.decode(message.value)
                     headers = list(message.headers)

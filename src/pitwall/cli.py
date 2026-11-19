@@ -400,7 +400,7 @@ def parser() -> argparse.ArgumentParser:
     s.set_defaults(run=cmd_replay)
 
     s = sub.add_parser("service", help="Run one of Pitwall's services")
-    s.add_argument("name", choices=("ingest", "timing", "strategy", "api", "replayer"))
+    s.add_argument("name", choices=("ingest", "timing", "strategy", "api", "replayer", "uplink"))
     s.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8080")))
     s.set_defaults(run=cmd_service)
 

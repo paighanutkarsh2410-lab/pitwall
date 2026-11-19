@@ -62,6 +62,28 @@ BOARD_CHECKS = Counter(
     "Car gaps on a board compared with another copy's board for the same timing update",
     ["producer", "result"],
 )
+UPLINK_EVENTS = Counter("pitwall_uplink_events_total", "Events the factory confirmed receiving")
+UPLINK_BACKLOG = Gauge(
+    "pitwall_uplink_backlog_messages", "Trackside events the factory hasn't confirmed yet"
+)
+UPLINK_LINK_UP = Gauge("pitwall_uplink_link_up", "1 while the factory confirms what is sent")
+LINK_ENABLED = Gauge("pitwall_link_enabled", "0 while a drill has cut the link")
+UPLINK_OUTAGE = Histogram(
+    "pitwall_uplink_outage_seconds",
+    "How long each link outage lasted",
+    buckets=(5, 10, 30, 60, 120, 300, 600, 1800),
+)
+UPLINK_CATCHUP = Histogram(
+    "pitwall_uplink_catchup_seconds",
+    "Seconds from the link coming back to the factory receiving current data again",
+    buckets=(1, 2, 5, 10, 20, 30, 60, 120, 300),
+)
+INGEST_DUPLICATES = Counter(
+    "pitwall_ingest_duplicates_total", "Events received twice (re-sent after an outage), dropped"
+)
+INGEST_MISSING = Counter(
+    "pitwall_ingest_missing_events_total", "Events that never arrived (a gap in a key's numbers)"
+)
 FAULT_DELAY = Gauge(
     "pitwall_fault_delay_seconds", "Delay injected for a drill (0 normally)", ["service"]
 )

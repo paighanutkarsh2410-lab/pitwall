@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 
 from pitwall import bus, observe, tracing
 from pitwall import race as races
+from pitwall.delivery import KEYSEQ_HEADER, KeySequencer
 from pitwall.openf1 import OpenF1
 from pitwall.replay import Pace, Stats, replay
 from pitwall.services import Health, service_app
@@ -195,19 +196,23 @@ class Replayer:
             )
             run_header = (bus.RUN_HEADER, run.id.encode())
             observe.REPLAY_SPEED.set(run.pace.speed)
+            numbers = KeySequencer()
 
             async def emit(event: dict) -> None:
-                headers = [run_header, observe.sent_header()]
+                key = bus.key(event)
+                headers = [
+                    run_header,
+                    observe.sent_header(),
+                    (KEYSEQ_HEADER, str(numbers.number(key)).encode()),
+                ]
                 if tracing.should_trace(event):
                     with tracing.root_span("replayer.send", event, run=run.id):
                         headers = tracing.inject(headers)
                         await self.producer.send(
-                            bus.RAW, bus.encode(event), key=bus.key(event), headers=headers
+                            bus.RAW, bus.encode(event), key=key, headers=headers
                         )
                 else:
-                    await self.producer.send(
-                        bus.RAW, bus.encode(event), key=bus.key(event), headers=headers
-                    )
+                    await self.producer.send(bus.RAW, bus.encode(event), key=key, headers=headers)
                 observe.EVENTS.labels("replayer", event["type"], "sent").inc()
                 observe.REPLAY_BEHIND.set(run.stats.behind_s)
 
@@ -240,7 +245,8 @@ replayer = Replayer()
 
 
 async def work(health: Health) -> None:
-    await bus.ensure_topics()
+    # At the track, the replayer only needs the raw topic (it is the cars, nothing else).
+    await bus.ensure_topics(only=(bus.RAW,))
     replayer.producer = bus.producer(linger_ms=20)
     await replayer.producer.start()
     downloader = asyncio.create_task(downloads.work(), name="downloads")

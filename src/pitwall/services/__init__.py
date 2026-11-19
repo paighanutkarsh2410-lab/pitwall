@@ -4,7 +4,8 @@
     pitwall service timing     keep the live timing board
     pitwall service strategy   tyre stints, degradation and pit loss
     pitwall service api        the pit wall's WebSocket and REST API, and the screen itself
-    pitwall service replayer   replay races into Redpanda on request
+    pitwall service replayer   replay races into Redpanda on request (at the track)
+    pitwall service uplink     carry the trackside stream to the factory over the link
 
 Every service answers:
 
@@ -39,7 +40,7 @@ from pydantic import BaseModel, Field
 
 from pitwall import observe, tracing
 
-SERVICES = ("ingest", "timing", "strategy", "api", "replayer")
+SERVICES = ("ingest", "timing", "strategy", "api", "replayer", "uplink")
 INTERNAL = ("/metrics", "/faults")  # never served to requests that came through the ingress
 
 log = logging.getLogger("pitwall")
