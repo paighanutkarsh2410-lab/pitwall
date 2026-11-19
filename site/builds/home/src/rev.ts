@@ -1,4 +1,4 @@
-/** Car 1's real telemetry around lights out (public/rev.json, from Pitwall's recording). */
+/** A race winner's real telemetry around lights out (races.json, from OpenF1). */
 export interface RevSample {
   t: number; // ms from lights out
   speed: number; // km/h
@@ -10,10 +10,10 @@ export interface RevSample {
 export class Telemetry {
   private constructor(private readonly samples: RevSample[]) {}
 
-  static async load(url = "rev.json"): Promise<Telemetry> {
-    const data = await fetch(url).then((r) => r.json());
-    const samples = (data.samples as number[][]).map(([t, speed, throttle, gear, rpm]) => ({ t, speed, throttle, gear, rpm }));
-    return new Telemetry(samples);
+  /** From rows of [ms from lights out, speed, throttle, gear, rpm] (races.json's `rev`). */
+  static from(rows: number[][]): Telemetry | null {
+    if (rows.length < 8) return null;
+    return new Telemetry(rows.map(([t, speed, throttle, gear, rpm]) => ({ t, speed, throttle, gear, rpm })));
   }
 
   get first(): number {

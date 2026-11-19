@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RaceControl } from "./components/RaceControl";
 import { RaceLibrary } from "./components/RaceLibrary";
 import { RaceTrace } from "./components/RaceTrace";
@@ -10,7 +10,7 @@ import { TrackMap } from "./components/TrackMap";
 import { onColour, raceClock, teamColour, TRACK_STATUS } from "./format";
 import { teamCars, teams } from "./strategy";
 import type { Replay } from "./types";
-import { RECORDING, type Playback } from "./recording";
+import { DRIVER, RECORDING, type Playback } from "./recording";
 import { useLive } from "./useLive";
 
 const TEAM_KEY = "pitwall.team";
@@ -56,13 +56,24 @@ export function App() {
   }, [setLogos, setReplay]);
 
   const allTeams = useMemo(() => (board ? teams(board) : []), [board]);
-  // Default to a team in the race (Red Bull if it's there), and remember the choice.
+  // Default to a team in the race (Red Bull if it's there), and remember the choice. On the public
+  // site, a driver chosen on the home page (?driver=4) decides it instead, once, and is followed.
+  const followed = useRef(false);
   useEffect(() => {
-    if (!allTeams.length) return;
+    if (!allTeams.length || !board) return;
+    if (RECORDING && DRIVER && !followed.current) {
+      const car = board.cars.find((c) => c.car === DRIVER);
+      if (car) {
+        followed.current = true;
+        setTeam(car.team);
+        setFocus(null);
+        return;
+      }
+    }
     if (!team || !allTeams.some((t) => t.team === team)) {
       setTeam(allTeams.find((t) => t.team.startsWith("Red Bull"))?.team ?? allTeams[0].team);
     }
-  }, [allTeams, team, setTeam]);
+  }, [allTeams, team, setTeam, board]);
   useEffect(() => {
     try {
       if (team) localStorage.setItem(TEAM_KEY, team);
@@ -74,7 +85,8 @@ export function App() {
   const ours = board ? teamCars(board, team) : [];
   const compared = useMemo(() => {
     if (!board) return [];
-    const first = ours[0];
+    // The driver chosen on the home page leads the comparison; otherwise the team's first car.
+    const first = ours.find((c) => c.car === DRIVER) ?? ours[0];
     const other = focus != null ? board.cars.find((c) => c.car === focus && c.car !== first?.car) : ours[1];
     return [first, other].filter((c): c is NonNullable<typeof c> => c != null);
   }, [board, ours, focus]);

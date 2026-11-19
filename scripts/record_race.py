@@ -8,7 +8,7 @@ positions, telemetry and circuit outline) and writes what the pit-wall screen wo
 sent, in one-minute chunks of race time:
 
     <out>/<race>/manifest.json      the session, the circuit, the chunks, when each lap started
-    <out>/<race>/chunk-0042.json    boards, strategy, positions (4 a second) and telemetry
+    <out>/<race>/chunk-0042.json.gz boards, strategy, positions (2 a second) and telemetry, gzipped
     <out>/<race>/story.json         the race in laps, for the broadcast page: order per lap,
                                     the grid, gaps, pit stops, weather, race control
 
@@ -34,7 +34,8 @@ RUN = "recording"
 CHUNK_MS = 60_000  # race time per file
 BOARD_EVERY = 1_000  # the timing service publishes about once a second
 STRATEGY_EVERY = 5_000
-POSITIONS_EVERY = 250  # the screen draws positions at 4 frames a second
+POSITIONS_EVERY = 500  # twice a second; the screen eases the dots between them
+TELEMETRY_EVERY = 450  # about two samples a second per car, from the ~3.7 the cars send
 LEAD_IN_MS = 90_000  # start a little before lights out: the grid, the formation finish
 
 
@@ -49,10 +50,14 @@ def compact(value):
     return value
 
 
-def write(path: Path, data) -> int:
-    text = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
-    path.write_text(text, encoding="utf-8")
-    return len(text.encode())
+def write(path: Path, data, packed: bool = False) -> int:
+    """Writes JSON; packed files are gzipped (the browser unpacks them), since a static host
+    counts what is stored, and a race's chunks shrink about 15 times."""
+    raw = json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode()
+    if packed:
+        raw = gzip.compress(raw, compresslevel=9, mtime=0)
+    path.write_bytes(raw)
+    return len(raw)
 
 
 def lights_out(path: Path) -> int:
@@ -100,8 +105,8 @@ def record(race: str, out: Path) -> None:
         nonlocal chunk, total_bytes
         if chunk is None:
             return
-        name = f"chunk-{len(chunks):04d}.json"
-        size = write(folder / name, chunk)
+        name = f"chunk-{len(chunks):04d}.json.gz"
+        size = write(folder / name, chunk, packed=True)
         total_bytes += size
         chunks.append({"file": name, "t0": chunk["t0"], "t1": chunk["t0"] + CHUNK_MS})
         chunk = None
@@ -192,8 +197,10 @@ def record(race: str, out: Path) -> None:
                 car = e["car"]
                 last = sent_telemetry.get(car)
                 for s in live.telemetry_since(car, last):
+                    if last is not None and s[0] - last < TELEMETRY_EVERY:
+                        continue
                     chunk_for(t)["telemetry"].setdefault(str(car), []).append(list(s))
-                    sent_telemetry[car] = s[0]
+                    sent_telemetry[car] = last = s[0]
             tick(t)
             # One line of the story per lap of the leader, taken when the leader starts it.
             if board.lap and board.lap != last_lap_logged and kind == "lap.started":

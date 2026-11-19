@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pitwall · Seventeenth to first</title>
-<meta name="description" content="Verstappen's 2024 São Paulo Grand Prix, from seventeenth on the grid to the win, replayed from 1.86 million real timing events.">
+<title>Pitwall · Every winner, every race</title>
+<meta name="description" content="Pick any Grand Prix from 2023 on: the winning car revs to its driver's real launch telemetry, then the pit wall replays the race from real timing data.">
 <meta name="theme-color" content="#070708">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23070708'/><path d='M5 22 L15 10 H27 L17 22 Z' fill='%23e10600'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,59 +19,75 @@
     <a class="bar__mark" href="./">PITWALL</a>
     <nav class="bar__tabs" aria-label="Site">
       <a href="./" aria-current="page">Home</a>
-      <a href="pitwall/">Pit wall</a>
+      <a href="pitwall/" data-bind-href="pitwall">Pit wall</a>
       <a href="engineering/">Engineering</a>
     </nav>
   </header>
 
   <main>
-    <!-- HERO: pinned while the car revs, launches and rolls across the page, uncovering the card. -->
-    <section class="hero" aria-label="The RB19 on the grid">
+    <!-- HERO: the chosen race's winning car revs; scrolling launches it across the page,
+         uncovering the winner's title card. -->
+    <section class="hero" aria-label="The race winner's car">
       <div class="hero__scene-space" aria-hidden="true"></div>
-      <div class="hero__ghost" aria-hidden="true">RB19</div>
+      <div class="hero__ghost" aria-hidden="true" data-bind="ghost">RB20</div>
       <div class="hero__copy">
-        <p class="kicker">2024 São Paulo Grand Prix · Interlagos</p>
+        <p class="kicker" data-bind="kicker">2024 São Paulo Grand Prix · Interlagos</p>
         <h1 class="title">
-          <span class="title__script">Seventeenth to</span>
-          <span class="title__bold">First.</span>
+          <span class="title__script" data-bind="first">Max</span>
+          <span class="title__bold" data-bind="last">VERSTAPPEN</span>
         </h1>
-        <p class="hero__sub">Verstappen's race, rebuilt from 1.86 million real timing events.</p>
+        <p class="hero__sub" data-bind="sub">Won from seventeenth on the grid, 19.477 s clear.</p>
+        <button class="pick" type="button" aria-haspopup="dialog">
+          <span class="pick__label">Choose a race</span>
+          <span class="pick__count" data-bind="count"></span>
+        </button>
       </div>
-      <div class="rev" aria-label="Car 1 on the grid, real telemetry">
+      <div class="rev" aria-label="The winner's real telemetry at the start">
         <div class="rev__row">
           <span class="rev__rpm"><b class="rev__n">0</b> rpm</span>
           <span class="rev__gear">Gear <b class="rev__g">N</b></span>
           <span class="rev__speed"><b class="rev__s">0</b> km/h</span>
         </div>
         <div class="rev__bar"><span class="rev__fill"></span></div>
-        <p class="rev__src">Car 1, real telemetry: the grid, then the launch.</p>
+        <p class="rev__src" data-bind="revsrc">Car 1, real telemetry: the grid, then the launch.</p>
       </div>
-      <span class="corner corner--tl" aria-hidden="true">1</span>
-      <span class="corner corner--br" aria-hidden="true">1</span>
-      <!-- The page the car rolls over: a title card, the way the broadcast introduces a driver.
-           Revealed behind the car as it passes (main.ts drives --reveal). -->
-      <div class="card" aria-label="Max Verstappen">
-        <div class="card__ghost" aria-hidden="true">VERSTAPPEN</div>
+      <span class="corner corner--tl" aria-hidden="true" data-bind="number">1</span>
+      <span class="corner corner--br" aria-hidden="true" data-bind="number">1</span>
+
+      <!-- The page the car rolls over: the winner's title card, revealed behind the car as it
+           passes (main.ts drives --reveal). -->
+      <div class="card" aria-label="The winner">
+        <div class="card__ghost" aria-hidden="true" data-bind="last">VERSTAPPEN</div>
         <div class="card__body">
-          <p class="card__team">Red Bull Racing · RB19</p>
-          <h2 class="card__name"><span class="card__first">Max</span><span class="card__last">VERSTAPPEN</span></h2>
+          <p class="card__team" data-bind="teamcar">Red Bull Racing · RB20</p>
+          <h2 class="card__name"><span class="card__first" data-bind="first">Max</span><span class="card__last" data-bind="last">VERSTAPPEN</span></h2>
           <dl class="card__facts">
-            <div><dt>Grid</dt><dd>17</dd></div>
+            <div><dt>Grid</dt><dd data-bind="grid">17</dd></div>
             <div><dt>Finish</dt><dd>1</dd></div>
-            <div><dt>Winning margin</dt><dd>19.477<small>s</small></dd></div>
-            <div><dt>Fastest lap</dt><dd>1:20.472</dd></div>
+            <div><dt>Winning margin</dt><dd data-bind="margin">19.477<small>s</small></dd></div>
+            <div><dt>Best lap</dt><dd data-bind="best">1:20.472</dd></div>
+            <div><dt>Pit stops</dt><dd data-bind="pits">1</dd></div>
           </dl>
           <p class="card__actions">
-            <a class="cta" href="pitwall/">Open the pit wall</a>
+            <a class="cta" href="pitwall/" data-bind-href="pitwall">Open the pit wall</a>
             <a class="more" href="engineering/">How it's built</a>
           </p>
+          <p class="card__note" data-bind="note"></p>
         </div>
-        <span class="corner corner--tr" aria-hidden="true">1</span>
-        <span class="corner corner--bl" aria-hidden="true">1</span>
+        <span class="corner corner--tr" aria-hidden="true" data-bind="number">1</span>
+        <span class="corner corner--bl" aria-hidden="true" data-bind="number">1</span>
       </div>
     </section>
-
   </main>
+
+  <!-- The race picker: every Grand Prix from 2023 on, by season. -->
+  <dialog class="picker" aria-labelledby="picker-title">
+    <div class="picker__head">
+      <h2 id="picker-title" class="picker__title"><span class="picker__script">Choose</span> A RACE</h2>
+      <button class="picker__close" type="button" aria-label="Close">Close</button>
+    </div>
+    <div class="picker__seasons"></div>
+  </dialog>
 
   <footer class="foot">
     <p>Unofficial personal project. Not associated with Formula 1, the FIA, any team or broadcaster. Race data from <a href="https://openf1.org">OpenF1</a>. <span class="foot__model"></span> <a href="https://github.com/paighanutkarsh2410-lab/pitwall">Source on GitHub</a>.</p>

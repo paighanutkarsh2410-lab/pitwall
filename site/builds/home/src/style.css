@@ -78,7 +78,8 @@ main { position: relative; z-index: 2; }
 }
 .title__bold {
   display: block; font-weight: 900; font-variation-settings: "wdth" 125; text-transform: uppercase;
-  font-size: clamp(3.6rem, 1.4rem + 7.2vw, 9rem); letter-spacing: -0.035em; margin-top: -0.12em;
+  /* Sized to the name: about 0.82em a letter at this width, kept inside the left 42% of the screen. */
+  font-size: min(9rem, calc(42vw / (var(--name-chars, 6) * 0.82))); letter-spacing: -0.035em; margin-top: -0.12em;
 }
 .hero__sub { margin: 1.5rem 0 0; max-width: 30ch; color: var(--ink-soft); font-size: 1.1rem; line-height: 1.5; }
 
@@ -125,7 +126,7 @@ main { position: relative; z-index: 2; }
 .card__name { margin: 0; line-height: 0.85; }
 .card__first { display: block; font-family: var(--script); font-weight: 400; font-size: clamp(3rem, 1.6rem + 5vw, 6.5rem); color: #fff; margin-left: 0.2em; transform: rotate(-4deg); transform-origin: left bottom; }
 .card__last { display: block; font-weight: 900; font-variation-settings: "wdth" 125; font-size: clamp(3.2rem, 0.8rem + 8.6vw, 10.5rem); letter-spacing: -0.035em; margin-top: -0.1em; }
-.card__facts { display: grid; grid-template-columns: repeat(4, minmax(0, auto)); gap: 1rem 3rem; margin: 3rem 0 0; justify-content: start; }
+.card__facts { display: grid; grid-template-columns: repeat(5, minmax(0, auto)); gap: 1rem 2.6rem; margin: 3rem 0 0; justify-content: start; }
 .card__facts dt { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgb(255 255 255 / 0.8); }
 .card__facts dd { margin: 0.35rem 0 0; font-weight: 800; font-variation-settings: "wdth" 110; font-size: clamp(1.8rem, 1.2rem + 1.6vw, 3rem); line-height: 1; font-variant-numeric: tabular-nums; }
 .card__facts small { font-size: 0.45em; margin-left: 0.1em; opacity: 0.8; }
@@ -142,6 +143,57 @@ main { position: relative; z-index: 2; }
 .more { font-weight: 700; color: #fff; }
 .card :focus-visible { outline-color: #fff; }
 
+.card__note { margin: 1rem 0 0; font-size: 0.8rem; color: rgb(255 255 255 / 0.8); max-width: 50ch; }
+.card__note:empty { display: none; }
+
+/* ------------------------------------------------------- choosing a race -- */
+.pick {
+  display: inline-flex; align-items: center; gap: 0.9rem; margin-top: 2rem;
+  padding: 0.85rem 1.5rem 0.85rem 1.2rem; border: 1px solid rgb(244 243 241 / 0.35); border-radius: 0;
+  background: rgb(7 7 8 / 0.55); color: var(--ink); cursor: pointer;
+  font: 800 0.85rem/1 var(--display); letter-spacing: 0.12em; text-transform: uppercase; font-variation-settings: "wdth" 112;
+  transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 120ms var(--ease-out);
+}
+.pick::before { content: ""; width: 0.55rem; height: 0.55rem; background: var(--red); transform: rotate(45deg); }
+.pick:hover { border-color: var(--red); background: rgb(225 6 0 / 0.18); }
+.pick:active { transform: scale(0.97); }
+.pick__count { font-family: var(--mono); font-weight: 500; color: var(--ink-soft); letter-spacing: 0.04em; }
+
+.picker {
+  width: min(84rem, 100vw - 2rem); max-height: min(52rem, 100vh - 2rem); padding: 0; border: 0;
+  background: rgb(10 10 12 / 0.96); color: var(--ink); overflow: hidden;
+  box-shadow: 0 40px 120px rgb(0 0 0 / 0.7), inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+.picker[open] { display: grid; grid-template-rows: auto 1fr; animation: picker-in 260ms var(--ease-out); }
+.picker::backdrop { background: rgb(7 7 8 / 0.7); backdrop-filter: blur(6px); }
+@keyframes picker-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
+.picker__head { display: flex; justify-content: space-between; align-items: center; padding: 1.4rem 2rem; border-bottom: 2px solid var(--red); }
+.picker__title { margin: 0; font-weight: 900; font-variation-settings: "wdth" 125; font-size: 2rem; letter-spacing: -0.02em; line-height: 1; }
+.picker__script { font-family: var(--script); font-weight: 400; color: var(--red); font-size: 1.3em; margin-right: 0.2em; }
+.picker__close { background: none; border: 1px solid rgb(244 243 241 / 0.3); color: var(--ink); padding: 0.55rem 1rem; cursor: pointer;
+  font: 700 0.75rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.picker__close:hover { border-color: var(--ink); }
+.picker__seasons { display: grid; grid-template-columns: repeat(var(--seasons, 4), minmax(14rem, 1fr)); overflow: auto; }
+.season { border-right: 1px solid rgb(244 243 241 / 0.08); }
+.season:last-child { border-right: 0; }
+.season__year { position: sticky; top: 0; z-index: 1; margin: 0; padding: 1rem 1.25rem 0.75rem; background: rgb(10 10 12 / 0.98);
+  font: 900 1.6rem/1 var(--display); font-variation-settings: "wdth" 125; letter-spacing: -0.02em; }
+.season__year small { font: 500 0.7rem/1 var(--mono); color: var(--ink-soft); letter-spacing: 0.08em; margin-left: 0.5rem; }
+.season__list { list-style: none; margin: 0; padding: 0 0 1rem; }
+.race {
+  display: grid; grid-template-columns: 2rem 1fr auto; gap: 0.6rem; align-items: center; width: 100%;
+  padding: 0.62rem 1.25rem; background: none; border: 0; border-left: 3px solid transparent; color: inherit; text-align: left; cursor: pointer;
+  transition: background-color 120ms var(--ease-out), border-color 120ms var(--ease-out);
+}
+.race:hover, .race:focus-visible { background: rgb(255 255 255 / 0.05); border-left-color: var(--team, var(--red)); outline: none; }
+.race[aria-current="true"] { background: rgb(225 6 0 / 0.16); border-left-color: var(--red); }
+.race__round { font: 600 0.72rem/1 var(--mono); color: var(--ink-soft); }
+.race__name { font-weight: 700; font-size: 0.9rem; line-height: 1.25; }
+.race__name small { display: block; font: 500 0.68rem/1.4 var(--mono); color: var(--ink-soft); letter-spacing: 0.04em; }
+.race__winner { display: flex; align-items: center; gap: 0.45rem; font: 700 0.78rem/1 var(--mono); letter-spacing: 0.04em; }
+.race__winner::before { content: ""; width: 3px; height: 1.1rem; background: var(--team, #888); }
+.race__car { font: 500 0.68rem/1 var(--mono); color: var(--ink-soft); }
+
 .foot { position: relative; z-index: 2; padding: 2rem var(--gutter); font-size: 0.75rem; color: var(--ink-soft); background: var(--black); }
 .foot p { margin: 0; max-width: 90ch; }
 
@@ -153,9 +205,13 @@ main { position: relative; z-index: 2; }
   /* The car takes the top half; the type sits below it. */
   .hero__copy { top: auto; bottom: 9.5rem; transform: none; max-width: none; right: var(--gutter); }
   .hero__ghost { font-size: 58vw; top: 30%; }
-  .title__bold { font-size: clamp(3.2rem, 1rem + 13vw, 5rem); }
+  .title__bold { font-size: min(5rem, calc(88vw / (var(--name-chars, 6) * 0.82))); }
   .hero__sub { font-size: 0.95rem; }
   .card__facts { grid-template-columns: repeat(2, minmax(0, auto)); gap: 1rem 2rem; }
+  .picker { width: 100vw; max-height: 100vh; height: 100vh; }
+  .picker__seasons { grid-template-columns: 1fr; }
+  .picker__head { padding: 1rem; }
+  .pick { margin-top: 1.2rem; }
   .card__ghost { font-size: 34vw; }
   .card__last { font-size: 10.2vw; }
   .card__first { font-size: 3.2rem; }

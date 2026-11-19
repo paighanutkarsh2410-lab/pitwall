@@ -10,8 +10,21 @@ import type { Board, Sample, Strategy, Trace, Track } from "./types";
  * computes timing, it only replays what the services produced.
  */
 export const RECORDING = import.meta.env.VITE_PITWALL_SOURCE === "recording";
-const RACE = "2024-sao-paulo";
+const params = new URLSearchParams(location.search);
+/** The race to play: ?race=2025-silverstone (the home page links here with it). */
+export const RACE = /^\d{4}-[a-z0-9-]+$/.test(params.get("race") ?? "") ? params.get("race")! : "2024-sao-paulo";
+/** The driver to follow, if the home page named one: ?driver=4. */
+export const DRIVER = Number(params.get("driver")) || null;
 const DATA = () => new URL(`../data/${RACE}/`, document.baseURI).href;
+
+/** Chunks are stored gzipped (a static host counts stored size); the browser unpacks them. */
+async function readJson<T>(url: string): Promise<T> {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${url}: ${r.status}`);
+  if (!url.endsWith(".gz")) return r.json();
+  const unpacked = r.body!.pipeThrough(new DecompressionStream("gzip"));
+  return new Response(unpacked).json();
+}
 const TICK_MS = 200; // the API sends five frames a second
 const KEEP_SAMPLES = 240;
 
@@ -109,7 +122,7 @@ export function useRecording(watch: number[]): RecordedLive {
       if (!manifest || i < 0 || i >= manifest.chunks.length) return undefined;
       let p = chunks.current.get(i);
       if (!p) {
-        p = fetch(`${DATA()}${manifest.chunks[i].file}`).then((r) => r.json() as Promise<Chunk>);
+        p = readJson<Chunk>(`${DATA()}${manifest.chunks[i].file}`);
         p.then((c) => loaded.current.set(i, c)).catch(() => chunks.current.delete(i));
         chunks.current.set(i, p);
       }
