@@ -13,6 +13,13 @@ Every service answers:
     /metrics   Prometheus metrics (pitwall.observe)
     /faults    with PITWALL_FAULTS=true only: inject a delay for a drill, e.g.
                curl -X POST .../faults -d '{"delay_ms": 800}'
+
+Rehearsed bad releases: PITWALL_DEFECT makes this build behave like a buggy one, so a canary can
+be shown catching it (docs/progressive-delivery.md):
+
+    slow        every batch waits 900 ms
+    crash       the process dies 20 s after starting
+    wrong-gaps  (timing only) gaps on the board are 50% too big, silently
 """
 
 from __future__ import annotations
@@ -137,10 +144,13 @@ def service_app(name: str, worker: Worker, app: FastAPI | None = None) -> FastAP
         os.environ.setdefault("PITWALL_SERVICE", name)
         configure_logging()
         tracing.setup(name)
+        crash = apply_defect(name)
         task = asyncio.create_task(supervise(name, worker, health), name=f"{name}-worker")
         try:
             yield
         finally:
+            if crash:
+                crash.cancel()
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
@@ -191,6 +201,30 @@ def service_app(name: str, worker: Worker, app: FastAPI | None = None) -> FastAP
 
 
 _faults: dict[str, Faults] = {}
+
+
+def defect() -> str:
+    return os.environ.get("PITWALL_DEFECT", "").strip().lower()
+
+
+def apply_defect(name: str) -> asyncio.Task | None:
+    """Makes this build behave like a buggy release, for a canary drill."""
+    kind = defect()
+    if not kind:
+        return None
+    log.warning("DRILL: this build of %s carries the '%s' defect", name, kind)
+    if kind == "slow":
+        faults_of(name).set(900)
+    if kind == "crash":
+
+        async def die() -> None:
+            await asyncio.sleep(20)
+            log.critical("DRILL: crashing now (the 'crash' defect)")
+            logging.shutdown()
+            os._exit(3)
+
+        return asyncio.create_task(die(), name="drill-crash")
+    return None
 
 
 def faults_of(name: str) -> Faults:

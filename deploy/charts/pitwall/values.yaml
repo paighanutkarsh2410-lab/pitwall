@@ -15,25 +15,48 @@ faults: false
 dbSecret: pitwall-db
 
 # One entry per service; every one runs the same image: `pitwall service <name>`.
+# `canary` names the analysis a new version must pass (templates/analysis.yaml); a service
+# without one is a plain Deployment. `defect` turns a build into a rehearsed bad release.
 services:
   ingest:
-    replicas: 1
+    # Two replicas share the partitions; a canary joins them and takes its share.
+    replicas: 2
     db: true
+    canary: ingest
+    defect: ""
     resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { memory: 384Mi } }
   timing:
     replicas: 1
+    canary: timing
+    defect: ""
     resources: { requests: { cpu: 50m, memory: 96Mi }, limits: { memory: 256Mi } }
   strategy:
     replicas: 1
+    canary: strategy
+    defect: ""
     resources: { requests: { cpu: 50m, memory: 96Mi }, limits: { memory: 256Mi } }
   api:
     replicas: 1
     db: true
+    canary: api
+    defect: ""
     resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { memory: 384Mi } }
   replayer:
     replicas: 1
     races: true
     resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { memory: 512Mi } }
+
+# Progressive delivery with Argo Rollouts: one canary pod next to the stable version, a short
+# warm-up, then analysis of the canary's own metrics; promoted if it passes, rolled back if not.
+canary:
+  weight: 20
+  warmup: 20s
+  progressDeadlineSeconds: 240
+  prometheus: http://prometheus-server.observability.svc
+  analysis:
+    initialDelay: 45s
+    interval: 30s
+    count: 5
 
 replayer:
   # Start this race when the replayer starts, and loop it, so the pit wall is never empty.

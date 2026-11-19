@@ -8,6 +8,7 @@ browser.
 from __future__ import annotations
 
 import math
+import time
 from collections import deque
 from dataclasses import dataclass, field
 
@@ -52,6 +53,31 @@ class Outline:
         return self.points[::stride]
 
 
+def compare_boards(a: dict, b: dict) -> tuple[int, int]:
+    """Car by car, do two boards agree on the gaps they got from the same timing update?
+
+    Only cars whose gaps came from the same interval event (same ``gap_t``) are compared, so two
+    correct copies always agree exactly, however their publishing interleaves.
+    """
+    others = {c["car"]: c for c in b.get("cars", [])}
+    same = different = 0
+    for car in a.get("cars", []):
+        theirs = others.get(car["car"])
+        if not theirs or car.get("gap_t") is None or car.get("gap_t") != theirs.get("gap_t"):
+            continue
+        for name in ("gap_to_leader", "interval"):
+            mine, other = car.get(name), theirs.get(name)
+            if isinstance(mine, int | float) and isinstance(other, int | float):
+                agree = abs(mine - other) < 0.001
+            else:
+                agree = mine == other
+            if agree:
+                same += 1
+            else:
+                different += 1
+    return same, different
+
+
 class Live:
     def __init__(self) -> None:
         self.board: dict | None = None
@@ -61,6 +87,7 @@ class Live:
         self.run: str | None = None
         self.race: str | None = None
         self.outlines: dict[str, Outline] = {}
+        self.by_producer: dict[str, tuple[float, dict]] = {}
         self.reset_cars()
 
     def reset_cars(self) -> None:
@@ -70,17 +97,48 @@ class Live:
 
     # ---- Inputs -----------------------------------------------------------------------------
 
-    def on_board(self, board: dict) -> None:
+    def on_board(self, board: dict) -> list[tuple[str, int, int]]:
+        """Takes a board from any copy of the timing service. Returns, for each comparison with
+        another copy's board, (producer, matching gaps, mismatching gaps)."""
         run = board.get("run")
         if run != self.run:
             if self.run is not None and run is not None and run < self.run:
-                return  # an older run's board
+                return []  # an older run's board
             self.run = run
             self.reset_cars()
+            self.by_producer = {}
+        checks = self.compare(board)
+        # Two copies publish during a canary; never let a slightly older board replace a newer.
+        if (
+            self.board
+            and self.board.get("run") == run
+            and board.get("t", 0) < self.board.get("t", 0)
+        ):
+            return checks
         session = board.get("session") or {}
         self.race = session.get("race_id", self.race)
         self.board = board
         self.board_version += 1
+        return checks
+
+    def compare(self, board: dict) -> list[tuple[str, int, int]]:
+        me = (board.get("producer") or {}).get("id")
+        if me is None:
+            return []
+        now = time.monotonic()
+        self.by_producer = {
+            pid: (seen, other)
+            for pid, (seen, other) in self.by_producer.items()
+            if now - seen < 30  # a copy that stopped publishing (a finished canary) drops out
+        }
+        checks = []
+        for pid, (_, other) in self.by_producer.items():
+            if pid != me:
+                same, different = compare_boards(board, other)
+                if same or different:
+                    checks.append((me, same, different))
+        self.by_producer[me] = (now, board)
+        return checks
 
     def on_strategy(self, strategy: dict) -> None:
         self.strategy = strategy

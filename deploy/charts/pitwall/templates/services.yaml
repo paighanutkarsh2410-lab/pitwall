@@ -12,8 +12,15 @@ spec:
   ports:
     - { name: http, port: 8080, targetPort: http }
 ---
+{{- if $svc.canary }}
+# Released by Argo Rollouts: a canary runs next to the stable version and is promoted only if its
+# own metrics pass the analysis in analysis.yaml; otherwise it is rolled back automatically.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+{{- else }}
 apiVersion: apps/v1
 kind: Deployment
+{{- end }}
 metadata:
   name: {{ $name }}
   labels:
@@ -21,8 +28,31 @@ metadata:
     {{- include "pitwall.labels" $ | nindent 4 }}
 spec:
   replicas: {{ $svc.replicas }}
-  {{- if $svc.races }}
-  strategy: { type: Recreate }  # one replayer at a time owns the race files
+  {{- if $svc.canary }}
+  revisionHistoryLimit: 3
+  progressDeadlineSeconds: {{ $.Values.canary.progressDeadlineSeconds }}
+  progressDeadlineAbort: true  # a canary that never becomes ready (a crash loop) is rolled back
+  strategy:
+    canary:
+      canaryMetadata:
+        labels: { pitwall.dev/role: canary }
+      stableMetadata:
+        labels: { pitwall.dev/role: stable }
+      maxSurge: 1
+      maxUnavailable: 0
+      steps:
+        # With one or two replicas, any weight below 50 means exactly one canary pod.
+        - setWeight: {{ $.Values.canary.weight }}
+        - pause: { duration: {{ $.Values.canary.warmup }} }
+        - analysis:
+            templates:
+              - templateName: canary-{{ $svc.canary }}
+            args:
+              - { name: service, value: {{ $name }} }
+              - name: hash
+                valueFrom: { podTemplateHashValue: Latest }
+  {{- else if $svc.races }}
+  strategy: { type: Recreate }  # one replayer at a time: it is the race itself, not a service
   {{- end }}
   selector:
     matchLabels: { app.kubernetes.io/name: {{ $name }} }
@@ -52,8 +82,17 @@ spec:
             - { name: PORT, value: "8080" }
             - { name: PITWALL_BROKERS, value: {{ $.Values.brokers | quote }} }
             - { name: PITWALL_SERVICE, value: {{ $name }} }
+            - { name: PITWALL_VERSION, value: {{ $.Values.image.tag | quote }} }
             - { name: PITWALL_LOG_FORMAT, value: json }
             - { name: PITWALL_FAULTS, value: {{ $.Values.faults | quote }} }
+            # Which copy this is: stable and canary pods differ in their template hash.
+            - name: POD_TEMPLATE_HASH
+              valueFrom:
+                fieldRef: { fieldPath: "metadata.labels['rollouts-pod-template-hash']" }
+            {{- with $svc.defect }}
+            # A rehearsed bad release (docs/progressive-delivery.md).
+            - { name: PITWALL_DEFECT, value: {{ . | quote }} }
+            {{- end }}
             {{- with $.Values.observability.otlpEndpoint }}
             - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: {{ . | quote }} }
             {{- end }}

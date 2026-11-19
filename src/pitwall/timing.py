@@ -34,6 +34,7 @@ class Car:
     start_position: int | None = None
     gap_to_leader: float | str | None = None
     interval: float | str | None = None
+    gap_t: int | None = None  # race time of the interval event the gaps came from
     compound: str | None = None
     tyre_age_start: int = 0
     stint_lap_start: int = 1
@@ -141,7 +142,7 @@ class Board:
 
     def _race_interval(self, e: dict, d: dict, car: int) -> None:
         c = self.car(car)
-        c.gap_to_leader, c.interval = d["gap_to_leader"], d["interval"]
+        c.gap_to_leader, c.interval, c.gap_t = d["gap_to_leader"], d["interval"], e["t"]
 
     def _tyre_stint(self, e: dict, d: dict, car: int) -> None:
         c = self.car(car)
@@ -202,6 +203,7 @@ class Board:
                     "lap": c.lap,
                     "gap_to_leader": c.gap_to_leader,
                     "interval": c.interval,
+                    "gap_t": c.gap_t,
                     "last_lap_ms": c.last_lap_ms,
                     "best_lap_ms": c.best_lap_ms,
                     "personal_best": c.personal_best,

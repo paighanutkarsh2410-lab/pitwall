@@ -19,3 +19,7 @@ spec:
   syncPolicy:
     automated: { prune: true, selfHeal: true }
     syncOptions: [CreateNamespace=true]
+    # The first sync after Argo Rollouts is added may arrive before its CRDs do: try again.
+    retry:
+      limit: 10
+      backoff: { duration: 15s, factor: 2, maxDuration: 3m }

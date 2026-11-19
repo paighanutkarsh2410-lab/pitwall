@@ -1,0 +1,145 @@
+{{- /*
+What a canary must show before it is promoted. Every query reads only the canary's own pods:
+Prometheus labels each metric with the pod's rollouts-pod-template-hash, and Argo Rollouts passes
+the canary's hash in as args.hash. Any failing check (after one retry) rolls the canary back.
+
+  restarts     the canary's containers never restarted
+  working      the canary is actually processing events (a stuck canary is not a healthy one)
+  freshness    the canary's p99 freshness meets the SLO for its stage
+  dead-letters ingest: the canary's events still pass the schema
+  agreement    timing: the canary's board matches the stable board, car by car
+  errors       api: the canary answers without 5xx
+*/ -}}
+{{- define "pitwall.analysis.common" }}
+    - name: restarts
+      initialDelay: {{ .Values.canary.analysis.initialDelay }}
+      interval: {{ .Values.canary.analysis.interval }}
+      count: {{ .Values.canary.analysis.count }}
+      failureLimit: 0
+      successCondition: result[0] < 1
+      provider:
+        prometheus:
+          address: {{ .Values.canary.prometheus }}
+          query: >-
+            sum(kube_pod_container_status_restarts_total{namespace="{{ .Release.Namespace }}",
+            pod=~"{{ "{{" }}args.service{{ "}}" }}-{{ "{{" }}args.hash{{ "}}" }}-.*"}) or vector(0)
+    - name: working
+      initialDelay: {{ .Values.canary.analysis.initialDelay }}
+      interval: {{ .Values.canary.analysis.interval }}
+      count: {{ .Values.canary.analysis.count }}
+      failureLimit: 1
+      successCondition: len(result) > 0 && result[0] > 0
+      provider:
+        prometheus:
+          address: {{ .Values.canary.prometheus }}
+          query: >-
+            sum(rate(pitwall_events_total{rollouts_pod_template_hash="{{ "{{" }}args.hash{{ "}}" }}"}[1m]))
+{{- end }}
+
+{{- define "pitwall.analysis.freshness" }}
+    - name: freshness
+      initialDelay: {{ .root.Values.canary.analysis.initialDelay }}
+      interval: {{ .root.Values.canary.analysis.interval }}
+      count: {{ .root.Values.canary.analysis.count }}
+      failureLimit: 1
+      # No samples yet is not a failure on its own: "working" catches a canary doing nothing.
+      successCondition: len(result) == 0 || isNaN(result[0]) || result[0] < {{ .seconds }}
+      provider:
+        prometheus:
+          address: {{ .root.Values.canary.prometheus }}
+          query: >-
+            histogram_quantile(0.99, sum by (le) (rate(pitwall_event_freshness_seconds_bucket{stage="{{ .stage }}",
+            rollouts_pod_template_hash="{{ "{{" }}args.hash{{ "}}" }}"}[1m])))
+{{- end }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: canary-ingest
+  labels: {{- include "pitwall.labels" . | nindent 4 }}
+spec:
+  args:
+    - name: service
+    - name: hash
+  metrics:
+    {{- include "pitwall.analysis.common" . }}
+    {{- include "pitwall.analysis.freshness" (dict "root" . "stage" "ingest" "seconds" "0.5") }}
+    - name: dead-letters
+      initialDelay: {{ .Values.canary.analysis.initialDelay }}
+      interval: {{ .Values.canary.analysis.interval }}
+      count: {{ .Values.canary.analysis.count }}
+      failureLimit: 1
+      successCondition: len(result) == 0 || isNaN(result[0]) || result[0] < 0.001
+      provider:
+        prometheus:
+          address: {{ .Values.canary.prometheus }}
+          query: >-
+            (sum(rate(pitwall_events_total{service="ingest",outcome="deadlettered",
+            rollouts_pod_template_hash="{{ "{{" }}args.hash{{ "}}" }}"}[1m])) or vector(0))
+            / sum(rate(pitwall_events_total{service="ingest",rollouts_pod_template_hash="{{ "{{" }}args.hash{{ "}}" }}"}[1m]))
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: canary-timing
+  labels: {{- include "pitwall.labels" . | nindent 4 }}
+spec:
+  args:
+    - name: service
+    - name: hash
+  metrics:
+    {{- include "pitwall.analysis.common" . }}
+    {{- include "pitwall.analysis.freshness" (dict "root" . "stage" "timing" "seconds" "1") }}
+    - name: agreement
+      initialDelay: {{ .Values.canary.analysis.initialDelay }}
+      interval: {{ .Values.canary.analysis.interval }}
+      count: {{ .Values.canary.analysis.count }}
+      failureLimit: 1
+      # Share of the canary's car gaps that differ from the stable board for the same update.
+      successCondition: len(result) == 0 || isNaN(result[0]) || result[0] < 0.01
+      provider:
+        prometheus:
+          address: {{ .Values.canary.prometheus }}
+          query: >-
+            (sum(rate(pitwall_board_checks_total{producer="{{ "{{" }}args.hash{{ "}}" }}",result="mismatch"}[1m])) or vector(0))
+            / sum(rate(pitwall_board_checks_total{producer="{{ "{{" }}args.hash{{ "}}" }}"}[1m]))
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: canary-strategy
+  labels: {{- include "pitwall.labels" . | nindent 4 }}
+spec:
+  args:
+    - name: service
+    - name: hash
+  metrics:
+    {{- include "pitwall.analysis.common" . }}
+    {{- /* strategy publishes once a second, so its p99 freshness is about 2 s by design */}}
+    {{- include "pitwall.analysis.freshness" (dict "root" . "stage" "strategy" "seconds" "3") }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: canary-api
+  labels: {{- include "pitwall.labels" . | nindent 4 }}
+spec:
+  args:
+    - name: service
+    - name: hash
+  metrics:
+    {{- include "pitwall.analysis.common" . }}
+    {{- include "pitwall.analysis.freshness" (dict "root" . "stage" "api" "seconds" "0.5") }}
+    - name: errors
+      initialDelay: {{ .Values.canary.analysis.initialDelay }}
+      interval: {{ .Values.canary.analysis.interval }}
+      count: {{ .Values.canary.analysis.count }}
+      failureLimit: 1
+      successCondition: len(result) == 0 || isNaN(result[0]) || result[0] < 0.01
+      provider:
+        prometheus:
+          address: {{ .Values.canary.prometheus }}
+          query: >-
+            (sum(rate(pitwall_http_requests_total{service="api",code=~"5..",
+            rollouts_pod_template_hash="{{ "{{" }}args.hash{{ "}}" }}"}[1m])) or vector(0))
+            / sum(rate(pitwall_http_requests_total{service="api",rollouts_pod_template_hash="{{ "{{" }}args.hash{{ "}}" }}"}[1m]))

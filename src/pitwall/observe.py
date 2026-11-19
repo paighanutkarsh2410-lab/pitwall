@@ -57,6 +57,11 @@ HTTP_SECONDS = Histogram(
     ["service", "route"],
     buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5),
 )
+BOARD_CHECKS = Counter(
+    "pitwall_board_checks_total",
+    "Car gaps on a board compared with another copy's board for the same timing update",
+    ["producer", "result"],
+)
 FAULT_DELAY = Gauge(
     "pitwall_fault_delay_seconds", "Delay injected for a drill (0 normally)", ["service"]
 )

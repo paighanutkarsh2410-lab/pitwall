@@ -1,0 +1,14 @@
+# argo/argo-rollouts: the controller that runs canaries for Pitwall's services.
+controller:
+  replicas: 1
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits: { memory: 256Mi }
+  metrics:
+    enabled: true
+  # Prometheus finds it the same way as everything else.
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8090"
+dashboard:
+  enabled: false  # Argo CD already shows Rollouts and their analysis

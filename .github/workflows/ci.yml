@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
-    # A docs-only change needs no new image and no redeploy.
-    paths-ignore: ["docs/**", "**/*.md"]
+    # A docs-only change needs no new image and no redeploy; nor does an environment's values
+    # (a release drill, a setting): Argo CD deploys those straight from Git.
+    paths-ignore: ["docs/**", "**/*.md", "deploy/env/**"]
   pull_request:
     paths-ignore: ["docs/**", "**/*.md"]
 
@@ -70,6 +71,8 @@ jobs:
           helm template loki grafana/loki --version 7.5.0 -f loki.yaml > /dev/null
           helm template tempo grafana-community/tempo --version 3.2.1 -f tempo.yaml > /dev/null
           helm template otel-collector open-telemetry/opentelemetry-collector --version 0.178.2 -f otel-collector.yaml > /dev/null
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm template argo-rollouts argo/argo-rollouts --version 2.43.9 -f ../platform/argo-rollouts.yaml > /dev/null
       - name: Scripts parse
         run: for s in scripts/*.sh; do bash -n "$s"; done
 

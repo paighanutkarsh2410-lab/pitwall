@@ -57,7 +57,14 @@ async def follow(health: Health) -> None:
     async def pump_snapshots() -> None:
         async for message in snapshots:
             value = bus.decode(message.value)
-            (live.on_board if message.topic == bus.BOARD else live.on_strategy)(value)
+            if message.topic == bus.BOARD:
+                for producer, same, different in live.on_board(value):
+                    if same:
+                        observe.BOARD_CHECKS.labels(producer, "match").inc(same)
+                    if different:
+                        observe.BOARD_CHECKS.labels(producer, "mismatch").inc(different)
+            else:
+                live.on_strategy(value)
             health.count("snapshots")
 
     async def pump_cars() -> None:
