@@ -191,6 +191,13 @@ installs what the experiments need from this repository's charts at the versions
 pins (no Argo CD, Grafana, Loki or Tempo, to fit a CI runner), then runs the two kill
 experiments. A broken hypothesis fails the workflow, and the reports are kept as artifacts.
 
+Its first run took 18 minutes and agreed with the laptop: both held, nothing lost, no pit stop
+counted twice. Broker kill: 21 re-sent events dropped by ingest and 12 by the projectors, fresh
+again 60 s after the broker returned, and two pages: `PitwallLinkDown`, and the telemetry
+freshness budget (on a fresh cluster, 90 s with no data burns the whole short window). Processor
+crash: browsers 9.6 s behind while the dead pod's partitions were reassigned, a freshness
+ticket, no page.
+
 ```bash
 ./scripts/chaos-suite.sh                           # pod-kill broker-kill
 ./scripts/chaos-suite.sh db-io-latency             # or any of gameday.py --list
