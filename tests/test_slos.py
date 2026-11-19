@@ -34,6 +34,12 @@ def test_page_alerts_use_the_sre_workbook_burn_rates():
     assert 'rate3d{slo="ingest-validity"} > 0.001' in ticket  # 99.9%: 1x of a 0.1% budget
 
 
+def test_rare_event_slos_open_tickets_but_never_page():
+    assert "PitwallLinkCatchUpBudgetTicket" in rules()
+    assert "PitwallLinkCatchUpBudgetPage" not in rules()
+    assert "PitwallTelemetryFreshnessBudgetPage" in rules()
+
+
 def test_freshness_counts_late_events_as_errors():
     ratio = rules()["pitwall:slo_error_ratio:rate5m/telemetry-freshness"]["expr"]
     assert 'le=~"0.5"' in ratio and 'stage="api"' in ratio and "[5m]" in ratio

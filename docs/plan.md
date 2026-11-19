@@ -61,7 +61,10 @@ right alert.
 
 *Done when* each bad release is caught and rolled back with no human involved.
 
-## Phase 4: Trackside and factory
+## Phase 4: Trackside and factory ✅
+
+Runs as a `trackside` namespace with its own Redpanda and a Python uplink instead of a second
+cluster and MirrorMaker 2, to fit a laptop's memory ([why](trackside.md#where-this-departs-from-the-plan-and-why)).
 
 - A minimal trackside cluster ingests and buffers in its own Redpanda; MirrorMaker 2 replicates
   to the factory

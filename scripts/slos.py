@@ -44,6 +44,9 @@ class SLO:
     description: str
     errors: str  # PromQL for bad events per second; $W is the window
     total: str  # PromQL for all events per second
+    # Burn-rate paging needs volume: an SLO over a handful of events a day (link outages) would
+    # page on one slow event. Those get the ticket alerts only.
+    page: bool = True
 
 
 def within(histogram: str, selector: str, seconds: float) -> tuple[str, str]:
@@ -92,6 +95,7 @@ SLOS = (
         0.99,
         "99% of trackside link outages are caught up within 60 s of the link returning",
         *within("pitwall_uplink_catchup_seconds", "", 60),
+        page=False,  # rare events; the outage itself pages (PitwallLinkDown)
     ),
 )
 
@@ -125,7 +129,7 @@ def slo_rules(slo: SLO) -> dict:
         },
     ]
     alerts = []
-    for severity in ("page", "ticket"):
+    for severity in ("page", "ticket") if slo.page else ("ticket",):
         conditions = []
         for sev, burn, long, short in BURNS:
             if sev == severity:

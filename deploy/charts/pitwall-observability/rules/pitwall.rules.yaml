@@ -262,15 +262,6 @@ groups:
     expr: 1 - (pitwall:slo_error_ratio:rate3d{slo="link-catch-up"} / 0.01)
     labels:
       slo: link-catch-up
-  - alert: PitwallLinkCatchUpBudgetPage
-    expr: (pitwall:slo_error_ratio:rate1h{slo="link-catch-up"} > 0.144 and pitwall:slo_error_ratio:rate5m{slo="link-catch-up"} > 0.144) or (pitwall:slo_error_ratio:rate6h{slo="link-catch-up"} > 0.06 and pitwall:slo_error_ratio:rate30m{slo="link-catch-up"} > 0.06)
-    labels:
-      severity: page
-      slo: link-catch-up
-    annotations:
-      summary: 'link-catch-up: error budget burning too fast (page)'
-      description: 'SLO: 99% of trackside link outages are caught up within 60 s of the link returning. Objective 99.0%.'
-      runbook_url: https://github.com/paighanutkarsh2410-lab/pitwall/blob/main/docs/runbooks/link-catch-up.md
   - alert: PitwallLinkCatchUpBudgetTicket
     expr: (pitwall:slo_error_ratio:rate1d{slo="link-catch-up"} > 0.03 and pitwall:slo_error_ratio:rate2h{slo="link-catch-up"} > 0.03) or (pitwall:slo_error_ratio:rate3d{slo="link-catch-up"} > 0.01 and pitwall:slo_error_ratio:rate6h{slo="link-catch-up"} > 0.01)
     labels:
