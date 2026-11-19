@@ -943,3 +943,14 @@ button.primary,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* The public site: tabs back to the other pages, and the recording's transport. */
+.site-tabs { display: flex; gap: 0.25rem; align-items: center; }
+.site-tabs a {
+  padding: 0.35rem 0.6rem; border-radius: 6px; color: inherit; opacity: 0.7;
+  text-decoration: none; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.site-tabs a[aria-current="page"] { opacity: 1; box-shadow: inset 0 -2px 0 var(--accent); border-radius: 0; }
+.site-tabs a:hover { opacity: 1; }
+.seek { display: inline-flex; align-items: center; gap: 0.4rem; }
+.seek input { width: 7rem; accent-color: var(--accent); }

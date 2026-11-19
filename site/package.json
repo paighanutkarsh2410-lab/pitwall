@@ -1,0 +1,8 @@
+{
+  "name": "pitwall-site",
+  "private": true,
+  "description": "The static site's verification tooling (scroll-craft's screenshot harness)",
+  "devDependencies": {
+    "playwright-core": "1.64.1"
+  }
+}

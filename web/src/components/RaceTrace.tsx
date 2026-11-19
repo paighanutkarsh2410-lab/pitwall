@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { teamColour } from "../format";
+import { RECORDING, recordedTrace } from "../recording";
 import type { Board, Trace } from "../types";
 
 const W = 900;
@@ -12,7 +13,19 @@ const PAD = { l: 38, r: 54, t: 10, b: 22 };
  */
 export function RaceTrace({ board, team, run }: { board: Board; team: string | null; run: string }) {
   const [trace, setTrace] = useState<Trace | null>(null);
+  const lap = board.lap;
   useEffect(() => {
+    if (!RECORDING) return;
+    let cancelled = false;
+    recordedTrace(lap)
+      .then((t) => !cancelled && setTrace(t))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [lap]);
+  useEffect(() => {
+    if (RECORDING) return;
     let cancelled = false;
     const load = () =>
       fetch("/api/trace")

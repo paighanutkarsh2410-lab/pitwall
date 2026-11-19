@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { RECORDING, type Playback, useRecording } from "./recording";
 import type { Board, Sample, Strategy, Track } from "./types";
 
 const KEEP_SAMPLES = 240; // about a minute of a car's telemetry
@@ -11,6 +12,8 @@ export interface Live {
   track: Track | null;
   /** Recent telemetry of the watched cars, by car number. */
   samples: Record<string, Sample[]>;
+  /** Only on the public site, where a recording stands in for the API. */
+  playback?: Playback;
 }
 
 interface Frame {
@@ -22,7 +25,7 @@ interface Frame {
 }
 
 /** One WebSocket to pitwall-api, reconnecting with backoff; frames arrive five times a second. */
-export function useLive(watch: number[]): Live {
+function useSocket(watch: number[]): Live {
   const [live, setLive] = useState<Live>({
     connected: false,
     board: null,
@@ -100,3 +103,7 @@ export function useLive(watch: number[]): Live {
 
   return live;
 }
+
+/** The screen's data: the API's WebSocket, or on the public site a recording of it. Fixed at
+ * build time (VITE_PITWALL_SOURCE), so the hook order never changes between renders. */
+export const useLive: (watch: number[]) => Live = RECORDING ? useRecording : useSocket;

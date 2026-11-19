@@ -49,6 +49,15 @@ def test_a_car_is_in_the_pit_lane_until_it_comes_out(events):
     assert next(c for c in after["cars"] if c["car"] == 1)["in_pit"] is False
 
 
+def test_a_red_flag_stop_does_not_keep_a_car_in_the_pit_for_laps():
+    board = Board()
+    board.apply({"type": "pit.stop", "t": 1_000, "car": 1,
+                 "data": {"lap": 32, "pit_lane_ms": 1_800_000, "stop_ms": None}}, "r")  # fmt: skip
+    board.apply({"type": "race.interval", "t": 90_000, "car": 1,
+                 "data": {"gap_to_leader": 0.0, "interval": 0.0}}, "r")  # fmt: skip
+    assert next(c for c in board.snapshot()["cars"] if c["car"] == 1)["in_pit"] is False
+
+
 def test_a_new_run_starts_a_fresh_board_and_old_stragglers_are_ignored(events):
     board = board_after(events, run="first")
     assert board.apply(events[0], "second")

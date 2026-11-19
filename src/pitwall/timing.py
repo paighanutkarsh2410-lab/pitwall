@@ -153,7 +153,11 @@ class Board:
         c = self.car(car)
         c.pits += 1
         c.last_pit = {"lap": d["lap"], "pit_lane_ms": d["pit_lane_ms"], "stop_ms": d["stop_ms"]}
-        c.pit_until_t = e["t"] + (d["pit_lane_ms"] or 25_000)
+        # A red-flag stop is logged as one pit visit lasting the whole stoppage (half an hour at
+        # São Paulo 2024), which kept every car "in the pit" for laps after the restart. A real
+        # stop takes well under a minute, so that is as long as the badge stays up.
+        lane_ms = d["pit_lane_ms"] or 25_000
+        c.pit_until_t = e["t"] + min(lane_ms, PIT_LANE_MAX_MS)
 
     def _weather(self, e: dict, d: dict, _: None) -> None:
         self.weather = d
@@ -221,6 +225,9 @@ class Board:
                 for c in cars
             ],
         }
+
+
+PIT_LANE_MAX_MS = 60_000
 
 
 def track_status(current: str, d: dict, yellow_sectors: set[int]) -> str:

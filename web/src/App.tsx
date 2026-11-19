@@ -10,6 +10,7 @@ import { TrackMap } from "./components/TrackMap";
 import { onColour, raceClock, teamColour, TRACK_STATUS } from "./format";
 import { teamCars, teams } from "./strategy";
 import type { Replay } from "./types";
+import { RECORDING, type Playback } from "./recording";
 import { useLive } from "./useLive";
 
 const TEAM_KEY = "pitwall.team";
@@ -43,6 +44,7 @@ export function App() {
   const { board, strategy } = live;
 
   useEffect(() => {
+    if (RECORDING) return; // the public site has no API: no logos, no replay to poll
     fetch("/api/logos")
       .then((r) => (r.ok ? r.json() : {}))
       .then(setLogos)
@@ -99,6 +101,15 @@ export function App() {
           </span>
           Pitwall
         </div>
+        {RECORDING && (
+          <nav className="site-tabs" aria-label="Site">
+            <a href="../">Race</a>
+            <a href="./" aria-current="page">
+              Pit wall
+            </a>
+            <a href="../engineering/">Engineering</a>
+          </nav>
+        )}
         <label className="team-pick">
           <span className="dim small">Team</span>
           <select value={team ?? ""} onChange={(e) => setTeam(e.target.value)} aria-label="Team">
@@ -137,6 +148,9 @@ export function App() {
             </span>
           </div>
         )}
+        {RECORDING && live.playback ? (
+          <RecordingControls playback={live.playback} />
+        ) : (
         <div className="transport">
           <span className={`replay-state ${replay.state}`} title={replay.detail}>
             {replay.state === "downloading" ? "Downloading" : replay.state}
@@ -155,6 +169,7 @@ export function App() {
           </button>
           <span className={`link ${live.connected ? "up" : "down"}`} title={live.connected ? "Live" : "Reconnecting"} />
         </div>
+        )}
       </header>
 
       {board && board.cars.length > 0 ? (
@@ -171,8 +186,8 @@ export function App() {
         </main>
       ) : (
         <main className="waiting">
-          <p>{live.connected ? "No race on the wall yet." : "Connecting to the pit wall…"}</p>
-          {live.connected && (
+          <p>{RECORDING ? "Loading the recording…" : live.connected ? "No race on the wall yet." : "Connecting to the pit wall…"}</p>
+          {live.connected && !RECORDING && (
             <button className="primary" onClick={() => setLibrary(true)}>
               Open the race library
             </button>
@@ -180,12 +195,45 @@ export function App() {
         </main>
       )}
 
-      {library && <RaceLibrary onClose={() => setLibrary(false)} onStart={start} />}
+      {library && !RECORDING && <RaceLibrary onClose={() => setLibrary(false)} onStart={start} />}
 
       <footer className="foot dim small">
         Unofficial personal project, not associated with Formula 1, the FIA or any team. Team colours and names are race data;
         no team branding is used. Data from OpenF1.
       </footer>
+    </div>
+  );
+}
+
+/** The public site's transport: a recording of a real race, played at the chosen speed. */
+function RecordingControls({ playback }: { playback: Playback }) {
+  const { playing, speed, lap, laps, buffering } = playback;
+  return (
+    <div className="transport">
+      <span className={`replay-state ${buffering ? "downloading" : playing ? "playing" : "stopped"}`} title="A recording of the race, replayed through Pitwall's own code">
+        {buffering ? "Loading" : "Recording"}
+      </span>
+      <button onClick={playback.toggle} aria-pressed={!playing}>
+        {playing ? "Pause" : "Play"}
+      </button>
+      <div className="toggle" role="group" aria-label="Speed">
+        {[1, 5, 10, 20].map((s) => (
+          <button key={s} aria-pressed={speed === s} onClick={() => playback.setSpeed(s)}>
+            {s}×
+          </button>
+        ))}
+      </div>
+      <label className="seek small">
+        <span className="dim">Lap</span>
+        <input
+          type="range"
+          min={1}
+          max={laps}
+          value={Math.max(1, lap)}
+          onChange={(e) => playback.seekLap(Number(e.target.value))}
+          aria-label="Jump to lap"
+        />
+      </label>
     </div>
   );
 }

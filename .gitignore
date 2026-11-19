@@ -22,3 +22,8 @@ Thumbs.db
 # The screen
 web/node_modules/
 chaos-reports/
+site/public/
+site/dist/
+site/node_modules/
+site/lab/
+web/dist-site/

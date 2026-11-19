@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pitwall · Lights out at Interlagos</title>
+<meta name="description" content="The 2024 São Paulo Grand Prix, rebuilt from 1.86 million real timing events. Your scroll is the race clock.">
+<meta name="theme-color" content="#0b0d10">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230b0d10'/><rect x='6' y='9' width='20' height='3' fill='%23ff4a1c'/><rect x='6' y='15' width='14' height='3' fill='%23f1efe9'/><rect x='6' y='21' width='9' height='3' fill='%23f1efe9'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,300..900;1,62..125,300..900&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="scrollcraft.css">
+<link rel="stylesheet" href="race.css">
+</head>
+<body class="is-loading">
+
+<span data-sc-progress></span>
+<div class="sc-grain" aria-hidden="true"></div>
+
+<!-- The graphics package: persistent, loud, and the page's navigation. -->
+<header class="gfx-bar">
+  <a class="gfx-bar__mark" href="./" aria-label="Pitwall, the race">PITWALL</a>
+  <nav class="gfx-tabs" aria-label="Site">
+    <a href="./" aria-current="page">Race</a>
+    <a href="pitwall/">Pit wall</a>
+    <a href="engineering/">Engineering</a>
+  </nav>
+  <div class="gfx-clock" aria-live="off">
+    <span class="gfx-status" data-status="pre"><span class="gfx-status__lamp" aria-hidden="true"></span><span class="gfx-status__text">Grid</span></span>
+    <span class="gfx-lap"><span class="gfx-lap__label">Lap</span> <b class="gfx-lap__n">0</b><span class="gfx-lap__of">/69</span></span>
+  </div>
+</header>
+
+<!-- The timing tower: the signature move. Page scroll is the race clock; the order is real. -->
+<aside class="tower" aria-label="Timing tower" hidden>
+  <div class="tower__head">
+    <span class="tower__title">Interlagos</span>
+    <span class="tower__lap">Lap <b>0</b></span>
+  </div>
+  <ol class="tower__rows"></ol>
+  <p class="tower__note">Order and gaps as the leader starts each lap.</p>
+</aside>
+
+<main id="race">
+
+  <!-- 1 · LIGHTS: depth planes. Circuit far, grid mid, rain near, type in front. -->
+  <section class="shot shot--lights" data-sc-act="flow" data-laps="-1 0" data-ground="#0b0d10">
+    <div class="lights__planes" aria-hidden="true">
+      <div class="plane plane--circuit" data-sc-parallax="-1.4"><svg class="circuit" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"><path class="circuit__line" d=""/></svg></div>
+      <div class="plane plane--grid" data-sc-parallax="-0.6"><svg class="grid" viewBox="0 0 400 520"></svg></div>
+      <div class="plane plane--rain" data-sc-parallax="1.2"></div>
+    </div>
+    <div class="lights__copy sc-wrap">
+      <div class="gantry" aria-hidden="true">
+        <span class="gantry__light"></span><span class="gantry__light"></span><span class="gantry__light"></span><span class="gantry__light"></span><span class="gantry__light"></span>
+      </div>
+      <p class="kicker">2024 São Paulo Grand Prix · Interlagos · 69 laps</p>
+      <h1 class="sc-display hero-title">Lights out at Interlagos.</h1>
+      <p class="hero-sub">The whole race, rebuilt from 1.86 million real timing events. Your scroll is the race clock.</p>
+      <a class="cta" href="pitwall/">Open the pit wall</a>
+    </div>
+  </section>
+
+  <!-- 2 · LAP ONE: the grid morphs into the real lap-one positions. -->
+  <section class="shot shot--morph" data-sc-act="flow" data-laps="0 1" data-ground="#0e1116">
+    <div class="morph sc-wrap">
+      <div class="morph__copy">
+        <h2 class="sc-display shot-title">Seventeenth on the grid.</h2>
+        <p class="shot-body">Verstappen starts behind sixteen cars. When the leader starts lap two, he is eleventh.</p>
+      </div>
+      <figure class="morph__stage" aria-label="The starting grid becoming the cars' positions on the circuit after one lap">
+        <svg class="morph__svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+          <path class="circuit__line circuit__line--bright" d=""/>
+          <g class="morph__cars"></g>
+        </svg>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 3 · RAIN: the lap chart draws itself. -->
+  <section class="shot shot--rain" data-sc-act="flow" data-laps="1 27" data-ground="#0c1418">
+    <div class="rain sc-wrap">
+      <figure class="lapchart" data-sc-reveal="right" data-sc-reveal-at="0.12 0.6">
+        <svg class="lapchart__svg" viewBox="0 0 1000 400" preserveAspectRatio="none" aria-label="Position of every car, laps 1 to 27"></svg>
+        <figcaption class="lapchart__cap"><span>Lap 1</span><span>Lap 27</span></figcaption>
+      </figure>
+      <div class="rain__copy">
+        <h2 class="sc-display shot-title">Russell leads for 28 laps.</h2>
+        <p class="shot-body">It rains in 97 of the race's 129 weather readings. The track never gets warmer than 25.6&nbsp;°C.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · SAFETY CAR: race control's own words. -->
+  <section class="shot shot--yellow" data-sc-act="flow" data-laps="27 31" data-ground="#f2c230">
+    <div class="sc-wrap rc">
+      <p class="rc__label">Race control</p>
+      <ol class="rc__feed" data-sc-in data-sc-stagger="80">
+        <li><span class="rc__lap">Lap 28</span> Virtual safety car deployed</li>
+        <li><span class="rc__lap">Lap 28</span> Virtual safety car ending</li>
+        <li><span class="rc__lap">Lap 30</span> Safety car deployed</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 5 · RED FLAG: authored silence. The clock stops. -->
+  <section class="shot shot--red" data-sc-act="flow" data-laps="32 32" data-ground="#6e0d0d">
+    <div class="sc-wrap red">
+      <h2 class="sc-display red__title" data-sc-cue="0.2 1 0.2 0" data-sc-kinetic="words">Red flag.</h2>
+      <p class="red__body">Lap 32. The race stops. So does the clock.</p>
+    </div>
+  </section>
+
+  <!-- 6 · RESTART: the peak begins. The tower unfurls in the graphics layer. -->
+  <section class="shot shot--restart" data-sc-act="flow" data-laps="33 36" data-ground="#0b0d10">
+    <div class="sc-wrap restart peak-copy" data-sc-in data-sc-stagger="70">
+      <p class="restart__lap">Lap 33</p>
+      <h2 class="sc-display shot-title">Rolling start.</h2>
+      <p class="mono-line">Order for restart: OCO, VER, GAS, NOR, RUS, TSU, LEC, PIA</p>
+    </div>
+  </section>
+
+  <!-- 7 · OCON LEADS -->
+  <section class="shot shot--ocon" data-sc-act="flow" data-laps="36 43" data-ground="#0d1014">
+    <div class="sc-wrap ocon peak-copy">
+      <div class="ocon__gap" data-sc-reveal="left" data-sc-reveal-at="0.1 0.5"><span class="ocon__n">0.330</span><span class="ocon__unit">s</span></div>
+      <div class="ocon__copy">
+        <h2 class="sc-display shot-title">Ocon leads. Verstappen waits.</h2>
+        <p class="shot-body">By lap 43 the gap between them is a third of a second.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 · LAP 44: the peak lands. -->
+  <section class="shot shot--pass" data-sc-act="flow" data-laps="43 45" data-ground="#0b0d10">
+    <div class="sc-wrap pass peak-copy">
+      <h2 class="sc-display pass__title">Lap 44. <em>Verstappen leads.</em></h2>
+      <p class="shot-body">From seventeenth on the grid. He keeps it to the flag.</p>
+    </div>
+  </section>
+
+  <!-- 9 · NUMBERS: real figures land. -->
+  <section class="shot shot--numbers" data-sc-act="flow" data-laps="45 68" data-ground="#10141a">
+    <dl class="sc-wrap numbers">
+      <div class="numbers__item numbers__item--big"><dt>Pit stops</dt><dd><span data-sc-count="0 35" data-sc-cue="0.08 1 0.2 0">35</span></dd></div>
+      <div class="numbers__item"><dt>Fastest lap, Verstappen</dt><dd class="mono">1:20.472</dd></div>
+      <div class="numbers__item"><dt>Winning margin</dt><dd><span data-sc-count="0 19.477" data-sc-cue="0.08 1 0.2 0">19.477</span><span class="unit">s</span></dd></div>
+    </dl>
+  </section>
+
+  <!-- 10 · FLAG -->
+  <section class="shot shot--flag" data-sc-act="flow" data-laps="68 69" data-ground="#0b0d10">
+    <div class="flag" data-sc-reveal="iris" data-sc-reveal-at="0.1 0.55" aria-hidden="true"></div>
+    <div class="sc-wrap podium">
+      <h2 class="sc-display shot-title">Chequered flag.</h2>
+      <ol class="podium__list">
+        <li style="--team:#3671C6"><span class="podium__p">1</span><span class="podium__code">VER</span><span class="podium__gap">Winner</span></li>
+        <li style="--team:#0093cc"><span class="podium__p">2</span><span class="podium__code">OCO</span><span class="podium__gap">+19.477</span></li>
+        <li style="--team:#0093cc"><span class="podium__p">3</span><span class="podium__code">GAS</span><span class="podium__gap">+22.532</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 11 · HAND-OFF: abrupt, full bleed, one action. -->
+  <section class="shot shot--handoff" data-sc-act="flow" data-laps="69 69" data-ground="#ff4a1c">
+    <div class="sc-wrap handoff" data-sc-in data-sc-stagger="60">
+      <h2 class="sc-display handoff__title">This was a recording. The pit wall plays it live.</h2>
+      <p class="handoff__body">The same race, replayed in your browser through Pitwall's own timing, strategy and API code.</p>
+      <p class="handoff__actions"><a class="cta cta--ink" href="pitwall/">Open the pit wall</a> <a class="handoff__more" href="engineering/">How it's built</a></p>
+    </div>
+    <footer class="foot sc-wrap">
+      <p>Unofficial personal project. Not associated with Formula 1, the FIA, any team or broadcaster. Race data from <a href="https://openf1.org">OpenF1</a>. <a href="https://github.com/paighanutkarsh2410-lab/pitwall">Source on GitHub</a>.</p>
+    </footer>
+  </section>
+
+</main>
+
+<script src="scrollcraft.js"></script>
+<script>ScrollCraft.mount(document.body);</script>
+<script src="race.js"></script>
+</body>
+</html>
