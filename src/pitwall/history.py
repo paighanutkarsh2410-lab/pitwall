@@ -124,6 +124,9 @@ class Recorder:
                 )
             )
 
+    def pending(self) -> int:
+        return len(self.telemetry) + len(self.laps)
+
     def due(self) -> bool:
         pending = len(self.telemetry) + len(self.laps)
         return pending >= self.batch or (

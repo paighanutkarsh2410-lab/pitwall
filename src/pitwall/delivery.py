@@ -77,6 +77,35 @@ class Deduplicator:
         return Verdict(missing=missing)
 
 
+class Replays:
+    """A projector's side: has this event already been applied?
+
+    Ingest hands events on at least once: a pod that dies before committing its offsets has its
+    last few seconds read again by the pod that takes over, and those events go downstream a
+    second time. Their ``pitwall-keyseq`` comes with them, so a projector can drop what it has
+    applied before. Numbers are compared per topic and key: within one topic a key's events stay
+    in order, but across topics they interleave, and a key's numbers in one topic have gaps
+    (its other events went to other topics). So only "not newer than the last one" counts.
+    """
+
+    def __init__(self) -> None:
+        self.run: str | None = None
+        self.last: dict[tuple[str, bytes], int] = {}
+
+    def seen(self, run: str | None, topic: str, key: bytes | None, seq: int | None) -> bool:
+        if run is None or key is None or seq is None:
+            return False
+        if run != self.run:
+            if self.run is not None and run < self.run:
+                return False  # an older run's straggler: the model decides what to do with it
+            self.run, self.last = run, {}
+        last = self.last.get((topic, key))
+        if last is not None and seq <= last:
+            return True
+        self.last[(topic, key)] = seq
+        return False
+
+
 @dataclass
 class Outage:
     lasted: float  # seconds the link was down

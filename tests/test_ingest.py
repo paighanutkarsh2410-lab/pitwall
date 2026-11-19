@@ -48,3 +48,21 @@ def test_cars_spread_evenly_over_the_partitions():
 
 def test_every_event_type_has_a_route():
     assert set(bus.ROUTES) == set(EVENT_TYPES)
+
+
+def test_projectors_drop_events_ingest_handed_on_twice():
+    from pitwall.delivery import Replays
+
+    replays = Replays()
+    car = b"44"
+    # Car 44's numbers spread over two topics, interleaved: neither is a replay.
+    assert not replays.seen("r1", "pitwall.laps", car, 10)
+    assert not replays.seen("r1", "pitwall.pits", car, 12)
+    assert not replays.seen("r1", "pitwall.laps", car, 11)
+    assert not replays.seen("r1", "pitwall.pits", car, 30)
+    # A dead ingest pod's last events are read again and handed on a second time.
+    assert replays.seen("r1", "pitwall.pits", car, 30)
+    assert replays.seen("r1", "pitwall.laps", car, 11)
+    # A new run starts the numbers again; unnumbered events always pass.
+    assert not replays.seen("r2", "pitwall.pits", car, 0)
+    assert not replays.seen("r2", "pitwall.pits", car, None)

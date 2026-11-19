@@ -51,7 +51,10 @@ async def work(health: Health) -> None:
         await history.migrate(pool)
         recorder = history.Recorder(pool)
 
-    consumer = bus.consumer(group="ingest", auto_offset_reset="earliest")
+    # Offsets are committed by hand, only once what was read has been sent on and recorded (see
+    # checkpoint below). Auto-commit every 5 s meant a crashed pod's successor re-read up to 5 s
+    # of events and handed them on twice: the GameDay's SIGKILL found 1,251 duplicate rows.
+    consumer = bus.consumer(group="ingest", auto_offset_reset="earliest", enable_auto_commit=False)
     dedupe = Deduplicator()
     # When partitions move between ingest pods (a canary joining, a restart), the cars they
     # carry were last seen by another pod: forget their numbers rather than call the jump a gap.
@@ -62,7 +65,8 @@ async def work(health: Health) -> None:
     health.ready, health.detail = True, "consuming pitwall.raw"
     log.info("ingest is consuming %s (history: %s)", bus.RAW, "on" if recorder else "off")
     faults = faults_of("ingest")
-    last_lag = 0.0
+    last_lag = last_commit = 0.0
+    uncommitted = False
     try:
         while True:
             batches = await consumer.getmany(timeout_ms=250, max_records=2000)
@@ -106,6 +110,14 @@ async def work(health: Health) -> None:
                     written = await recorder.flush()
                 observe.HISTORY_ROWS.inc(written)
                 health.count("recorded", written)
+            uncommitted = uncommitted or bool(batches)
+            if (
+                uncommitted
+                and time.monotonic() - last_commit >= COMMIT_EVERY
+                and (recorder is None or not recorder.pending())  # right after a flush
+            ):
+                await checkpoint(consumer, producer)
+                uncommitted, last_commit = False, time.monotonic()
             if time.monotonic() - last_lag > 2:
                 for topic, lag in (await bus.lag_by_topic(consumer)).items():
                     observe.CONSUMER_LAG.labels("ingest", topic).set(lag)
@@ -113,6 +125,21 @@ async def work(health: Health) -> None:
     finally:
         await consumer.stop()
         await producer.stop()
+
+
+COMMIT_EVERY = 0.5  # seconds: at most this much is read twice after a crash
+
+
+async def checkpoint(consumer, producer) -> None:
+    """Commit what has been read, once every event read so far has reached its topic (and,
+    when recording, the database). A crash before this re-reads from the last checkpoint."""
+    from aiokafka.errors import CommitFailedError
+
+    await producer.flush()
+    try:
+        await consumer.commit()
+    except CommitFailedError as error:  # partitions moved meanwhile; the new owner re-reads
+        log.warning("Commit skipped: %s", error)
 
 
 app = service_app("ingest", work)

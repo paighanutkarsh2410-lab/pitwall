@@ -1,0 +1,18 @@
+# GameDay 3: a slow network to the factory broker (200 ms each way, 50 ms jitter) for 3 minutes.
+# Hypothesis: batching hides most of it; freshness rises by a few hundred milliseconds and stays
+# inside its SLO, no alert pages, and nothing is lost.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: broker-latency
+  namespace: pitwall
+  labels: { pitwall.dev/gameday: "true" }
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces: [pitwall]
+    labelSelectors: { app.kubernetes.io/name: redpanda }
+  delay: { latency: 200ms, jitter: 50ms, correlation: "25" }
+  direction: both
+  duration: 3m

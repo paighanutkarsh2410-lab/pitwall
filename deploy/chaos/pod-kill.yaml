@@ -1,0 +1,33 @@
+# GameDay 2: processors die mid-race: one ingest container crashes (SIGKILL, no clean shutdown),
+# every timing pod is deleted.
+# Hypothesis: ingest's other replicas take over the partitions; timing rebuilds its board from
+# the log. Kafka redelivers what the dead ingest hadn't committed, so some events reach the
+# downstream topics twice; the board must not count them twice (no doubled laps or pit stops).
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: ingest-kill
+  namespace: pitwall
+  labels: { pitwall.dev/gameday: "true" }
+spec:
+  # container-kill, not pod-kill: a deleted pod gets SIGTERM first, and ingest then commits its
+  # offsets and leaves the group cleanly. The first run did exactly that and nothing was re-read.
+  action: container-kill
+  containerNames: [ingest]
+  mode: one
+  selector:
+    namespaces: [pitwall]
+    labelSelectors: { app.kubernetes.io/name: ingest }
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: timing-kill
+  namespace: pitwall
+  labels: { pitwall.dev/gameday: "true" }
+spec:
+  action: pod-kill
+  mode: all
+  selector:
+    namespaces: [pitwall]
+    labelSelectors: { app.kubernetes.io/name: timing }

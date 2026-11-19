@@ -81,6 +81,11 @@ UPLINK_CATCHUP = Histogram(
 INGEST_DUPLICATES = Counter(
     "pitwall_ingest_duplicates_total", "Events received twice (re-sent after an outage), dropped"
 )
+PROJECTOR_REPLAYS = Counter(
+    "pitwall_projector_replays_total",
+    "Events a projector had already applied (handed on twice by ingest), dropped",
+    ["service"],
+)
 INGEST_MISSING = Counter(
     "pitwall_ingest_missing_events_total", "Events that never arrived (a gap in a key's numbers)"
 )

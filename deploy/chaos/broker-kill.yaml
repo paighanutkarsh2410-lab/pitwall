@@ -1,0 +1,16 @@
+# GameDay 1: the factory's only Redpanda broker dies mid-race.
+# Hypothesis: the trackside uplink buffers like a link cut; ingest, timing, strategy and the api
+# reconnect on their own once redpanda-0 is back. No event is lost, the board is late for about
+# as long as the broker is down, and the freshness alert fires only if that outage is long.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: broker-kill
+  namespace: pitwall
+  labels: { pitwall.dev/gameday: "true" }
+spec:
+  action: pod-kill
+  mode: all
+  selector:
+    namespaces: [pitwall]
+    labelSelectors: { app.kubernetes.io/name: redpanda }

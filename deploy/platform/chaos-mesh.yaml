@@ -12,6 +12,6 @@ chaosDaemon:
     requests: { cpu: 25m, memory: 64Mi }
     limits: { memory: 256Mi }
 dashboard:
-  create: false  # experiments are files in Git, run by scripts/gameday.sh
+  create: false  # experiments are files in Git, run by scripts/gameday.py
 dnsServer:
   create: false

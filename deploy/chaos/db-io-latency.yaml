@@ -1,0 +1,21 @@
+# GameDay 4: TimescaleDB's disk turns slow (every file operation waits 300 ms) for 3 minutes.
+# A stand-in for a filling disk: kind's local-path volumes have no quota to fill.
+# Hypothesis: history writes slow down and fall behind, but live timing does not: the board and
+# the browsers keep their freshness, because history is a side output of ingest.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: IOChaos
+metadata:
+  name: db-io-latency
+  namespace: pitwall
+  labels: { pitwall.dev/gameday: "true" }
+spec:
+  action: latency
+  mode: all
+  selector:
+    namespaces: [pitwall]
+    labelSelectors: { app.kubernetes.io/name: timescaledb }
+  volumePath: /var/lib/postgresql/data
+  path: "**/*"
+  delay: 300ms
+  percent: 100
+  duration: 3m

@@ -18,6 +18,7 @@ import time
 from typing import Protocol
 
 from pitwall import bus, observe, tracing
+from pitwall.delivery import Replays, keyseq_of
 from pitwall.services import Health, faults_of
 
 log = logging.getLogger("pitwall.projector")
@@ -65,6 +66,7 @@ async def project(
     # count towards freshness.
     started = observe.now_ms()
     faults = faults_of(group)
+    replays = Replays()
     try:
         while True:
             batches = await consumer.getmany(timeout_ms=100, max_records=5000)
@@ -72,6 +74,11 @@ async def project(
                 await faults.pause()
             for messages in batches.values():
                 for message in messages:
+                    run = bus.run_of(message.headers)
+                    if replays.seen(run, message.topic, message.key, keyseq_of(message.headers)):
+                        health.count("replays")
+                        observe.PROJECTOR_REPLAYS.labels(group).inc()
+                        continue  # applied already: a pit stop must not count twice
                     event = bus.decode(message.value)
                     sent = observe.sent_of(message.headers)
                     live = sent is not None and sent >= started
@@ -79,7 +86,7 @@ async def project(
                     # the same event again on every restart.
                     headers = message.headers if live else None
                     with tracing.span_from(headers, f"{group}.apply", event):
-                        applied = model.apply(event, bus.run_of(message.headers))
+                        applied = model.apply(event, run)
                     if applied:
                         dirty = True
                         health.count("events")
