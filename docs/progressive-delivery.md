@@ -38,15 +38,22 @@ and that makes the best check possible: **compare them**.
 |---|---|---|
 | restarts | all | the canary's containers never restarted |
 | working | all | the canary is processing events (a stuck canary is not a healthy one) |
-| freshness | all | the canary's p99 freshness meets its stage's SLO: 0.5 s (ingest, api), 1 s (timing), 3 s (strategy publishes once a second) |
+| freshness | all | the canary's p99 freshness is within 1.25 × the stable version's (+0.1 s), or within its stage's SLO: 0.5 s (ingest, api), 1 s (timing), 3 s (strategy publishes once a second). Relative, because a late upstream makes every copy late: an absolute bar once failed a good canary during a load test |
 | dead-letters | ingest | under 0.1% of the canary's events fail the schema |
 | agreement | timing | under 1% of the canary's car gaps differ from the stable board |
 | errors | api | under 1% of the canary's requests return a 5xx |
+| browsers | api | `pitwall probe` connects to the canary's `/ws` (through the `api-canary` Service) and receives a timing board, in at least 2 of 3 tries |
 
 **Agreement** is exact, not statistical. pitwall-api compares each board with the other copy's,
 car by car, but only for gaps that came from the same timing update (each car carries the race
 time of its last interval event). Two correct copies therefore agree on every comparison,
 however their publishing interleaves. A canary that is fast and stable but *wrong* is caught.
+
+**Browsers** is the one check that doesn't take the canary's word for it. Every other check is
+a metric the canary reports about itself, and a release once passed all of them while refusing
+every browser: a decorator ended up on the wrong object and `/ws` answered HTTP 500 (the load
+test found it, [scale-and-chaos.md](scale-and-chaos.md)). The probe opens the canary the way
+the pit-wall screen does.
 
 ## The drills
 

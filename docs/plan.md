@@ -73,7 +73,7 @@ cluster and MirrorMaker 2, to fit a laptop's memory ([why](trackside.md#where-th
 
 *Done when* a 60-second link cut mid-race loses nothing and the catch-up shows on a dashboard.
 
-## Phase 5: Race weekend at scale
+## Phase 5: Race weekend at scale ✅
 
 - KEDA scales processors on consumer lag
 - k6 load tests: replays at 20x with hundreds of WebSocket viewers

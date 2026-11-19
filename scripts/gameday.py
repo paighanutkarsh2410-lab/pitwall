@@ -194,10 +194,17 @@ def run(name: str, observe: float, speed: float) -> dict:
         time.sleep(30)
     began = time.time()
     already = firing()  # alerts from before the experiment aren't its doing
-    base = []
-    for _ in range(3):
-        base.append(sample())
-        show(time.time() - began, "baseline", base[-1])
+    # A settled baseline first: three samples in a row with the browsers fresh (under 1 s). Its
+    # 1-minute windows can still hold a release or an earlier experiment, and a fault injected
+    # then is blamed for what came before it (one run was, by 3.3 s).
+    base: list[dict] = []
+    while len(base) < 3:
+        s = sample()
+        show(time.time() - began, "baseline", s)
+        settled = s["fresh_api"] is not None and s["fresh_api"] < 1.0
+        base = [*base, s] if settled else []
+        if time.time() - began > 600:
+            raise SystemExit("The pit wall never settled; not injecting anything")
         time.sleep(15)
 
     print(f"Injecting {manifest.relative_to(ROOT)}", flush=True)
