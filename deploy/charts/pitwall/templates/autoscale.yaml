@@ -1,9 +1,9 @@
 {{- /*
 Autoscaling with KEDA. A service with `autoscale` gets a ScaledObject:
 
-  on: lag       consumer-group lag on pitwall.raw, per replica (ingest: more pods share the
+  by: lag       consumer-group lag on pitwall.raw, per replica (ingest: more pods share the
                 partitions, so they really do go faster)
-  on: browsers  pit-wall browsers connected, per replica (the API)
+  by: browsers  pit-wall browsers connected, per replica (the API)
 
 timing and strategy never scale: each copy holds the whole race, so more copies would add
 redundancy, not throughput. The replica count in the Rollout is only the starting point; Argo CD
@@ -40,7 +40,7 @@ spec:
           # Don't flap: a race's traffic comes in bursts (a safety car restart, a pit window).
           stabilizationWindowSeconds: 120
   triggers:
-    {{- if eq .on "lag" }}
+    {{- if eq .by "lag" }}
     - type: kafka
       metadata:
         bootstrapServers: redpanda.{{ $.Release.Namespace }}.svc.cluster.local:9092
@@ -48,7 +48,7 @@ spec:
         topic: pitwall.raw
         lagThreshold: {{ .lag | quote }}
         offsetResetPolicy: earliest
-    {{- else if eq .on "browsers" }}
+    {{- else if eq .by "browsers" }}
     - type: prometheus
       metadata:
         serverAddress: {{ $.Values.canary.prometheus }}
