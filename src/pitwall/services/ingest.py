@@ -7,6 +7,7 @@ never stops the race for everyone else.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 
@@ -51,9 +52,9 @@ async def work(health: Health) -> None:
         await history.migrate(pool)
         recorder = history.Recorder(pool)
 
-    # Offsets are committed by hand, only once what was read has been sent on and recorded (see
-    # checkpoint below). Auto-commit every 5 s meant a crashed pod's successor re-read up to 5 s
-    # of events and handed them on twice: the GameDay's SIGKILL found 1,251 duplicate rows.
+    # Offsets are committed by hand, only as far as what was read has been sent on and stored
+    # (see checkpoint below). Auto-commit every 5 s meant a crashed pod's successor re-read up
+    # to 5 s of events and handed them on twice: the GameDay's SIGKILL found 1,251 duplicates.
     consumer = bus.consumer(group="ingest", auto_offset_reset="earliest", enable_auto_commit=False)
     dedupe = Deduplicator()
     # When partitions move between ingest pods (a canary joining, a restart), the cars they
@@ -66,13 +67,15 @@ async def work(health: Health) -> None:
     log.info("ingest is consuming %s (history: %s)", bus.RAW, "on" if recorder else "off")
     faults = faults_of("ingest")
     last_lag = last_commit = 0.0
-    uncommitted = False
+    read: dict = {}  # partition -> the offset after the last message handled
+    writer = asyncio.create_task(recorder.run()) if recorder else None
     try:
         while True:
             batches = await consumer.getmany(timeout_ms=250, max_records=2000)
             if batches:
                 await faults.pause()
-            for messages in batches.values():
+            for tp, messages in batches.items():
+                read[tp] = messages[-1].offset + 1
                 for message in messages:
                     verdict = dedupe.check(
                         bus.run_of(message.headers), message.key, keyseq_of(message.headers)
@@ -105,24 +108,24 @@ async def work(health: Health) -> None:
                         observe.EVENTS.labels("ingest", event["type"], "routed").inc()
                         if recorder:
                             recorder.add(bus.run_of(message.headers) or "unknown", event)
-            if recorder and recorder.due():
-                with observe.HISTORY_WRITE.time():
-                    written = await recorder.flush()
-                observe.HISTORY_ROWS.inc(written)
-                health.count("recorded", written)
-            uncommitted = uncommitted or bool(batches)
-            if (
-                uncommitted
-                and time.monotonic() - last_commit >= COMMIT_EVERY
-                and (recorder is None or not recorder.pending())  # right after a flush
-            ):
-                await checkpoint(consumer, producer)
-                uncommitted, last_commit = False, time.monotonic()
+            if recorder:
+                if recorder.due() or (batches and not recorder.backlog()):
+                    dropped = recorder.hand_off(read)
+                    observe.HISTORY_DROPPED.inc(dropped)
+                observe.HISTORY_BACKLOG.set(recorder.backlog())
+            if time.monotonic() - last_commit >= COMMIT_EVERY:
+                done = recorder.durable if recorder else read
+                if done:
+                    await checkpoint(consumer, producer, dict(done))
+                    done.clear()
+                last_commit = time.monotonic()
             if time.monotonic() - last_lag > 2:
                 for topic, lag in (await bus.lag_by_topic(consumer)).items():
                     observe.CONSUMER_LAG.labels("ingest", topic).set(lag)
                 last_lag = time.monotonic()
     finally:
+        if writer:
+            writer.cancel()
         await consumer.stop()
         await producer.stop()
 
@@ -130,15 +133,19 @@ async def work(health: Health) -> None:
 COMMIT_EVERY = 0.5  # seconds: at most this much is read twice after a crash
 
 
-async def checkpoint(consumer, producer) -> None:
-    """Commit what has been read, once every event read so far has reached its topic (and,
-    when recording, the database). A crash before this re-reads from the last checkpoint."""
-    from aiokafka.errors import CommitFailedError
+async def checkpoint(consumer, producer, offsets: dict) -> None:
+    """Commit ``offsets``: everything before them has reached its topic and, when recording,
+    the database. A crash re-reads from the last checkpoint (at least once, never lost)."""
+    from aiokafka.errors import CommitFailedError, IllegalStateError
 
     await producer.flush()
+    owned = consumer.assignment()
+    offsets = {tp: offset for tp, offset in offsets.items() if tp in owned}
+    if not offsets:
+        return
     try:
-        await consumer.commit()
-    except CommitFailedError as error:  # partitions moved meanwhile; the new owner re-reads
+        await consumer.commit(offsets)
+    except (CommitFailedError, IllegalStateError) as error:  # partitions moved meanwhile
         log.warning("Commit skipped: %s", error)
 
 

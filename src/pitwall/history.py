@@ -10,6 +10,8 @@ import asyncio
 import logging
 import os
 import time
+from collections import deque
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 log = logging.getLogger("pitwall.history")
@@ -74,17 +76,50 @@ async def migrate(pool) -> None:
             await conn.execute("SELECT pg_advisory_unlock(424242)")
 
 
-class Recorder:
-    """Buffers rows and writes them in batches: COPY for telemetry, upserts for laps."""
+@dataclass
+class Batch:
+    telemetry: list[tuple]
+    laps: list[tuple]
+    offsets: dict = field(default_factory=dict)  # where the source has been read up to
 
-    def __init__(self, pool, *, batch: int = 5000, every: float = 0.5) -> None:
+    @property
+    def rows(self) -> int:
+        return len(self.telemetry) + len(self.laps)
+
+
+class Recorder:
+    """Buffers rows and writes them in batches (COPY for telemetry, upserts for laps), from a
+    writer task of its own, so live timing never waits for the database.
+
+    The GameDay's slow-disk experiment found it did: ingest wrote history inline, each write
+    took 2.5 s, and the pit wall fell 30 s behind. Now ingest hands batches over and carries
+    on. ``durable`` tells it how far the source has been read *and* stored, which is as far as
+    it may commit. If the database falls more than ``max_backlog`` rows behind, the oldest
+    waiting batches are given up on and counted: history has a gap, live timing doesn't.
+    """
+
+    def __init__(
+        self,
+        pool,
+        *,
+        batch: int = 5000,
+        every: float = 0.5,
+        max_backlog: int = 200_000,
+        retry: float = 1.0,
+    ) -> None:
         self.pool = pool
         self.batch = batch
         self.every = every
+        self.max_backlog = max_backlog
+        self.retry = retry
         self.telemetry: list[tuple] = []
         self.laps: list[tuple] = []
         self.last_flush = time.monotonic()
         self.written = 0
+        self.dropped = 0
+        self.queue: deque[Batch] = deque()
+        self.durable: dict = {}
+        self.wake = asyncio.Event()
 
     def add(self, run: str, event: dict) -> None:
         kind = event["type"]
@@ -124,21 +159,64 @@ class Recorder:
                 )
             )
 
-    def pending(self) -> int:
-        return len(self.telemetry) + len(self.laps)
+    def backlog(self) -> int:
+        """Rows read but not yet stored (buffered or waiting for the writer)."""
+        return len(self.telemetry) + len(self.laps) + sum(b.rows for b in self.queue)
 
     def due(self) -> bool:
         pending = len(self.telemetry) + len(self.laps)
-        return pending >= self.batch or (
+        return pending >= self.batch or bool(
             pending and time.monotonic() - self.last_flush >= self.every
         )
 
-    async def flush(self) -> int:
-        telemetry, laps = self.telemetry, self.laps
+    def hand_off(self, offsets: dict) -> int:
+        """Queues what is buffered for the writer, with how far the source has been read.
+        Returns how many rows were given up on to keep the backlog bounded."""
+        batch = Batch(self.telemetry, self.laps, dict(offsets))
         self.telemetry, self.laps = [], []
         self.last_flush = time.monotonic()
-        if not (telemetry or laps):
-            return 0
+        if batch.rows:
+            self.queue.append(batch)
+        elif self.queue:
+            self.queue[-1].offsets.update(batch.offsets)
+        else:
+            self.durable.update(batch.offsets)  # nothing to store: read is as good as stored
+        dropped = 0
+        # Never the first batch: the writer may be in the middle of it.
+        while self.backlog() > self.max_backlog and len(self.queue) > 2:
+            gone = self.queue[1]
+            del self.queue[1]
+            self.queue[0].offsets.update(gone.offsets)  # stored or not, it's been dealt with
+            dropped += gone.rows
+        if dropped:
+            self.dropped += dropped
+            log.error("TimescaleDB is %d rows behind: gave up on %d", self.backlog(), dropped)
+        self.wake.set()
+        return dropped
+
+    async def run(self) -> None:
+        """The writer: stores queued batches in order, retrying while the database is away."""
+        from pitwall import observe
+
+        while True:
+            if not self.queue:
+                self.wake.clear()
+                await self.wake.wait()
+                continue
+            batch = self.queue[0]
+            try:
+                with observe.HISTORY_WRITE.time():
+                    await self.write(batch.telemetry, batch.laps)
+            except Exception as error:  # the database is down or slow: keep the batch, retry
+                log.warning("History write failed (%s); retrying", error)
+                await asyncio.sleep(self.retry)
+                continue
+            self.queue.popleft()
+            self.durable.update(batch.offsets)
+            self.written += batch.rows
+            observe.HISTORY_ROWS.inc(batch.rows)
+
+    async def write(self, telemetry: list[tuple], laps: list[tuple]) -> None:
         async with self.pool.acquire() as conn, conn.transaction():
             if telemetry:
                 await conn.copy_records_to_table(
@@ -155,8 +233,6 @@ class Recorder:
                          s3_ms = EXCLUDED.s3_ms, pit_out_lap = EXCLUDED.pit_out_lap""",
                     laps,
                 )
-        self.written += len(telemetry) + len(laps)
-        return len(telemetry) + len(laps)
 
 
 async def laps_of(pool, run: str, car: int) -> list[dict]:

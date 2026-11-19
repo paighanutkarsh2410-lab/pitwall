@@ -44,6 +44,11 @@ HISTORY_WRITE = Histogram(
     buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5),
 )
 HISTORY_ROWS = Counter("pitwall_history_rows_total", "Rows written to TimescaleDB")
+HISTORY_BACKLOG = Gauge("pitwall_history_backlog_rows", "Rows read but not yet in TimescaleDB")
+HISTORY_DROPPED = Counter(
+    "pitwall_history_dropped_rows_total",
+    "Rows given up on because TimescaleDB fell too far behind (live timing never waits for it)",
+)
 WEBSOCKETS = Gauge("pitwall_websocket_clients", "Browsers connected to the pit wall")
 FRAMES = Counter("pitwall_frames_total", "WebSocket frames sent to browsers")
 REPLAY_SPEED = Gauge("pitwall_replay_speed", "Current replay speed (0 when idle)")

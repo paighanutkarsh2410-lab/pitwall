@@ -77,9 +77,14 @@ def counters(seconds: float) -> dict[str, int]:
     return {
         "lost": grew("pitwall_ingest_missing_events_total"),
         "resent_dropped": grew("pitwall_ingest_duplicates_total"),
-        "replays_dropped": grew("pitwall_projector_replays_total"),
+        # Projectors are replaced in some experiments and rebuild from the log; increase() can't
+        # see a new pod's first count, so this is their running total instead.
+        "replays_dropped": round(
+            value(f"sum(max_over_time(pitwall_projector_replays_total[{w}]))") or 0
+        ),
         "restarts": grew(f'kube_pod_container_status_restarts_total{{namespace="{NS}"}}'),
         "history_rows": grew("pitwall_history_rows_total"),
+        "history_dropped": grew("pitwall_history_dropped_rows_total"),
     }
 
 
@@ -99,6 +104,7 @@ def sample() -> dict:
         "history_s": value(
             "histogram_quantile(0.99, sum by (le) (rate(pitwall_history_write_seconds_bucket[1m])))"
         ),
+        "history_backlog": value("sum(pitwall_history_backlog_rows)"),
         "events_s": value('sum(rate(pitwall_events_total{service="ingest",outcome="routed"}[1m]))'),
     }
 
@@ -110,7 +116,7 @@ def show(t: float, phase: str, s: dict) -> None:
     print(
         f"+{t:5.0f}s {phase:<9} fresh p99 ingest={f(s['fresh_ingest'])} board={f(s['fresh_board'])}"
         f" api={f(s['fresh_api'])} | lag={f(s['lag'], 0)} events/s={f(s['events_s'], 0)}"
-        f" | history write p99={f(s['history_s'])}",
+        f" | history write p99={f(s['history_s'])} backlog={f(s['history_backlog'], 0)}",
         flush=True,
     )
 

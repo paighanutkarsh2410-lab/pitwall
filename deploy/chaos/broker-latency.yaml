@@ -14,5 +14,5 @@ spec:
     namespaces: [pitwall]
     labelSelectors: { app.kubernetes.io/name: redpanda }
   delay: { latency: 200ms, jitter: 50ms, correlation: "25" }
-  direction: both
+  direction: to  # "both" needs explicit targets; from the broker to every client is enough
   duration: 3m
