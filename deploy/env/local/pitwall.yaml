@@ -16,3 +16,8 @@ replayer:
   autostart: 2024-sao-paulo
   speed: 1
   loop: true
+
+# DRILL: a rehearsed bad release (docs/progressive-delivery.md). Remove to recover.
+services:
+  strategy:
+    defect: crash
