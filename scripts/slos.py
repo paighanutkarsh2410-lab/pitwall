@@ -46,12 +46,18 @@ class SLO:
     total: str  # PromQL for all events per second
 
 
-def freshness(stage: str, seconds: float) -> tuple[str, str]:
-    count = f'sum(rate(pitwall_event_freshness_seconds_count{{stage="{stage}"}}[$W]))'
+def within(histogram: str, selector: str, seconds: float) -> tuple[str, str]:
+    """Events slower than ``seconds`` (errors), and all events, from a latency histogram."""
+    sel = f"{selector}," if selector else ""
+    count = f"sum(rate({histogram}_count{{{selector}}}[$W]))"
     # Clients write the bound as "1.0" or "1"; match either.
     le = "|".join(sorted({f"{seconds:g}", str(float(seconds))}))
-    fresh = f'sum(rate(pitwall_event_freshness_seconds_bucket{{stage="{stage}",le=~"{le}"}}[$W]))'
-    return f"({count} - {fresh})", count
+    fast = f'sum(rate({histogram}_bucket{{{sel}le=~"{le}"}}[$W]))'
+    return f"({count} - {fast})", count
+
+
+def freshness(stage: str, seconds: float) -> tuple[str, str]:
+    return within("pitwall_event_freshness_seconds", f'stage="{stage}"', seconds)
 
 
 SLOS = (
@@ -80,6 +86,12 @@ SLOS = (
         "99.5% of pit-wall API requests succeed",
         'sum(rate(pitwall_http_requests_total{service="api",code=~"5.."}[$W]))',
         'sum(rate(pitwall_http_requests_total{service="api"}[$W]))',
+    ),
+    SLO(
+        "link-catch-up",
+        0.99,
+        "99% of trackside link outages are caught up within 60 s of the link returning",
+        *within("pitwall_uplink_catchup_seconds", "", 60),
     ),
 )
 
@@ -152,7 +164,7 @@ def symptom_alerts() -> dict:
         "rules": [
             alert(
                 "PitwallServiceDown",
-                'up{namespace="pitwall"} == 0',
+                'up{namespace=~"pitwall|trackside"} == 0',
                 "1m",
                 "page",
                 "{{ $labels.pod }} is not answering Prometheus",
@@ -183,8 +195,33 @@ def symptom_alerts() -> dict:
                 "consumer-lag",
             ),
             alert(
+                "PitwallLinkDown",
+                "max(pitwall_uplink_link_up) == 0",
+                "1m",
+                "page",
+                "The trackside link is down: the factory is getting no data (it is buffered)",
+                "trackside-link",
+            ),
+            alert(
+                "PitwallEventsLost",
+                "sum(increase(pitwall_ingest_missing_events_total[10m])) > 0",
+                "0m",
+                "page",
+                "{{ $value }} events never reached the factory: data was lost",
+                "trackside-link",
+            ),
+            alert(
+                "PitwallUplinkBacklog",
+                "max(pitwall_uplink_backlog_messages) > 50000",
+                "5m",
+                "ticket",
+                "{{ $value }} trackside events are waiting for the link",
+                "trackside-link",
+            ),
+            alert(
                 "PitwallPodRestarting",
-                'increase(kube_pod_container_status_restarts_total{namespace="pitwall"}[15m]) > 2',
+                "increase(kube_pod_container_status_restarts_total"
+                '{namespace=~"pitwall|trackside"}[15m]) > 2',
                 "0m",
                 "ticket",
                 "{{ $labels.pod }} restarted {{ $value }} times in 15 minutes",

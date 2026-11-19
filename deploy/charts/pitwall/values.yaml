@@ -41,10 +41,8 @@ services:
     canary: api
     defect: ""
     resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { memory: 384Mi } }
-  replayer:
-    replicas: 1
-    races: true
-    resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { memory: 512Mi } }
+  # The replayer runs at the track (the pitwall-trackside chart). Add it here for a single-site
+  # setup: replayer: { replicas: 1, races: true, resources: {...} }
 
 # Progressive delivery with Argo Rollouts: one canary pod next to the stable version, a short
 # warm-up, then analysis of the canary's own metrics; promoted if it passes, rolled back if not.
@@ -58,8 +56,11 @@ canary:
     interval: 30s
     count: 5
 
+# Where pitwall-api reaches the replayer (at the track, in the trackside namespace).
+replayerUrl: http://replayer.trackside.svc:8080
+
 replayer:
-  # Start this race when the replayer starts, and loop it, so the pit wall is never empty.
+  # Only for a single-site setup with services.replayer (see above).
   autostart: 2024-sao-paulo
   speed: 1
   loop: true

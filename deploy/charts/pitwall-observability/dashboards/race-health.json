@@ -83,7 +83,7 @@
       "gridPos": {
         "x": 0,
         "y": 1,
-        "w": 6,
+        "w": 5,
         "h": 4
       }
     },
@@ -141,9 +141,9 @@
       "description": "Share of the board-freshness error budget not yet spent over the last 3 days.",
       "id": 3,
       "gridPos": {
-        "x": 6,
+        "x": 5,
         "y": 1,
-        "w": 6,
+        "w": 5,
         "h": 4
       }
     },
@@ -201,9 +201,9 @@
       "description": "Share of the ingest-validity error budget not yet spent over the last 3 days.",
       "id": 4,
       "gridPos": {
-        "x": 12,
+        "x": 10,
         "y": 1,
-        "w": 6,
+        "w": 5,
         "h": 4
       }
     },
@@ -261,9 +261,69 @@
       "description": "Share of the api-availability error budget not yet spent over the last 3 days.",
       "id": 5,
       "gridPos": {
-        "x": 18,
+        "x": 15,
         "y": 1,
-        "w": 6,
+        "w": 5,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "link-catch-up \u00b7 budget left (3d)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "clamp_min(pitwall:slo_error_budget_remaining:3d{slo=\"link-catch-up\"}, 0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 0.25,
+                "color": "orange"
+              },
+              {
+                "value": 0.5,
+                "color": "green"
+              }
+            ]
+          },
+          "decimals": 1
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "description": "Share of the link-catch-up error budget not yet spent over the last 3 days.",
+      "id": 6,
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
         "h": 4
       }
     },
@@ -310,6 +370,15 @@
           "expr": "pitwall:slo_error_ratio:rate1h{slo=\"api-availability\"} / on(slo) (1 - pitwall:slo_objective{slo=\"api-availability\"})",
           "legendFormat": "api-availability",
           "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "pitwall:slo_error_ratio:rate1h{slo=\"link-catch-up\"} / on(slo) (1 - pitwall:slo_objective{slo=\"link-catch-up\"})",
+          "legendFormat": "link-catch-up",
+          "refId": "E"
         }
       ],
       "fieldConfig": {
@@ -352,7 +421,7 @@
         }
       },
       "description": "1 = spending the budget exactly as fast as it allows. 14.4 over an hour pages.",
-      "id": 6,
+      "id": 7,
       "gridPos": {
         "x": 0,
         "y": 5,
@@ -363,7 +432,7 @@
     {
       "type": "row",
       "title": "Freshness: from the replayer to each stage",
-      "id": 7,
+      "id": 8,
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -458,7 +527,7 @@
         }
       },
       "description": "The SLOs: api under 0.5 s, timing under 1 s, for 99% of events.",
-      "id": 8,
+      "id": 9,
       "gridPos": {
         "x": 0,
         "y": 13,
@@ -530,7 +599,7 @@
           "mode": "multi"
         }
       },
-      "id": 9,
+      "id": 10,
       "gridPos": {
         "x": 12,
         "y": 13,
@@ -541,7 +610,7 @@
     {
       "type": "row",
       "title": "Throughput and backlog",
-      "id": 10,
+      "id": 11,
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -588,7 +657,7 @@
           "mode": "multi"
         }
       },
-      "id": 11,
+      "id": 12,
       "gridPos": {
         "x": 0,
         "y": 22,
@@ -633,7 +702,7 @@
           "mode": "multi"
         }
       },
-      "id": 12,
+      "id": 13,
       "gridPos": {
         "x": 8,
         "y": 22,
@@ -694,7 +763,7 @@
           "mode": "multi"
         }
       },
-      "id": 13,
+      "id": 14,
       "gridPos": {
         "x": 16,
         "y": 22,
@@ -749,7 +818,7 @@
           ]
         }
       },
-      "id": 14,
+      "id": 15,
       "gridPos": {
         "x": 0,
         "y": 30,
@@ -800,7 +869,7 @@
           ]
         }
       },
-      "id": 15,
+      "id": 16,
       "gridPos": {
         "x": 4,
         "y": 30,
@@ -851,7 +920,7 @@
           ]
         }
       },
-      "id": 16,
+      "id": 17,
       "gridPos": {
         "x": 8,
         "y": 30,
@@ -907,7 +976,7 @@
         }
       },
       "description": "Non-zero only during a fault-injection drill (see docs/runbooks).",
-      "id": 17,
+      "id": 18,
       "gridPos": {
         "x": 12,
         "y": 30,
@@ -966,7 +1035,7 @@
           ]
         }
       },
-      "id": 18,
+      "id": 19,
       "gridPos": {
         "x": 16,
         "y": 30,
@@ -1017,7 +1086,7 @@
           ]
         }
       },
-      "id": 19,
+      "id": 20,
       "gridPos": {
         "x": 20,
         "y": 30,
@@ -1027,12 +1096,461 @@
     },
     {
       "type": "row",
-      "title": "History and API",
-      "id": 20,
+      "title": "Trackside link: track to factory",
+      "id": 21,
       "collapsed": false,
       "gridPos": {
         "x": 0,
         "y": 34,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Link",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "min(pitwall_uplink_link_up)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          },
+          "decimals": 0
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "description": "1: the factory confirms what the trackside sends. 0: the link is down; the trackside buffers.",
+      "id": 22,
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Events lost (24h)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(pitwall_ingest_missing_events_total[24h])) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          },
+          "decimals": 0
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "description": "Gaps in the per-car sequence numbers at the factory. Must stay 0.",
+      "id": 23,
+      "gridPos": {
+        "x": 4,
+        "y": 35,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Duplicates dropped (24h)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(pitwall_ingest_duplicates_total[24h])) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "blue"
+              }
+            ]
+          },
+          "decimals": 0
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "description": "Events re-sent after an outage that the factory had already received.",
+      "id": 24,
+      "gridPos": {
+        "x": 8,
+        "y": 35,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Link downtime (24h)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(pitwall_uplink_outage_seconds_sum[24h])) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "blue"
+              }
+            ]
+          },
+          "decimals": 0
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "description": "Total time the link was down over the last day.",
+      "id": 25,
+      "gridPos": {
+        "x": 12,
+        "y": 35,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Catch-up, worst (24h)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(1, sum by (le) (increase(pitwall_uplink_catchup_seconds_bucket[24h])))",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 60,
+                "color": "red"
+              }
+            ]
+          },
+          "decimals": 0
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "description": "Seconds from the link returning to the factory receiving current data. SLO: within 60 s.",
+      "id": 26,
+      "gridPos": {
+        "x": 16,
+        "y": 35,
+        "w": 8,
+        "h": 4
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Waiting at the track (backlog)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(pitwall_uplink_backlog_messages)",
+          "legendFormat": "events not yet confirmed by the factory",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 27,
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Through the link",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(pitwall_uplink_events_total[1m])",
+          "legendFormat": "events/s confirmed",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(pitwall_events_total{service=\"replayer\"}[1m]))",
+          "legendFormat": "events/s produced at the track",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 28,
+      "gridPos": {
+        "x": 8,
+        "y": 39,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Age of data crossing the link, p99",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(pitwall_event_freshness_seconds_bucket{stage=\"uplink\"}[1m])))",
+          "legendFormat": "p99",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "orange"
+              },
+              {
+                "value": 10,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 29,
+      "gridPos": {
+        "x": 16,
+        "y": 39,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "row",
+      "title": "History and API",
+      "id": 30,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 46,
         "w": 24,
         "h": 1
       },
@@ -1075,10 +1593,10 @@
           "mode": "multi"
         }
       },
-      "id": 21,
+      "id": 31,
       "gridPos": {
         "x": 0,
-        "y": 35,
+        "y": 47,
         "w": 8,
         "h": 7
       }
@@ -1120,10 +1638,10 @@
           "mode": "multi"
         }
       },
-      "id": 22,
+      "id": 32,
       "gridPos": {
         "x": 8,
-        "y": 35,
+        "y": 47,
         "w": 8,
         "h": 7
       }
@@ -1165,10 +1683,10 @@
           "mode": "multi"
         }
       },
-      "id": 23,
+      "id": 33,
       "gridPos": {
         "x": 16,
-        "y": 35,
+        "y": 47,
         "w": 8,
         "h": 7
       }
@@ -1176,11 +1694,11 @@
     {
       "type": "row",
       "title": "Logs and traces",
-      "id": 24,
+      "id": 34,
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 42,
+        "y": 54,
         "w": 24,
         "h": 1
       },
@@ -1208,10 +1726,10 @@
         "wrapLogMessage": true,
         "sortOrder": "Descending"
       },
-      "id": 25,
+      "id": 35,
       "gridPos": {
         "x": 0,
-        "y": 43,
+        "y": 55,
         "w": 14,
         "h": 10
       }
@@ -1235,10 +1753,10 @@
           "limit": 20
         }
       ],
-      "id": 26,
+      "id": 36,
       "gridPos": {
         "x": 14,
-        "y": 43,
+        "y": 55,
         "w": 10,
         "h": 10
       }

@@ -1,0 +1,113 @@
+{{- /* The replayer (the cars) and the uplink (the link's sending end), both running the Pitwall
+image. Both are single copies: the replayer is the race itself, and the uplink is the one road
+out of the track. */ -}}
+{{- range $name := list "replayer" "uplink" }}
+{{- $svc := index $.Values $name }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels: { app.kubernetes.io/name: {{ $name }}, app.kubernetes.io/part-of: pitwall, pitwall.dev/site: trackside }
+spec:
+  selector: { app.kubernetes.io/name: {{ $name }} }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels: { app.kubernetes.io/name: {{ $name }}, app.kubernetes.io/part-of: pitwall, pitwall.dev/site: trackside }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app.kubernetes.io/name: {{ $name }} }
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+        app.kubernetes.io/part-of: pitwall
+        app.kubernetes.io/version: {{ $.Values.image.tag | quote }}
+        pitwall.dev/site: trackside
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /metrics/
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: {{ $name }}
+          image: {{ $.Values.image.repository }}:{{ $.Values.image.tag }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          args: [service, {{ $name }}]
+          env:
+            - { name: PORT, value: "8080" }
+            # The trackside's own Redpanda.
+            - { name: PITWALL_BROKERS, value: "redpanda:9092" }
+            - { name: PITWALL_SERVICE, value: {{ $name }} }
+            - { name: PITWALL_VERSION, value: {{ $.Values.image.tag | quote }} }
+            - { name: PITWALL_LOG_FORMAT, value: json }
+            - { name: PITWALL_FAULTS, value: {{ $.Values.faults | quote }} }
+            {{- with $.Values.observability.otlpEndpoint }}
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: {{ . | quote }} }
+            {{- end }}
+            {{- if eq $name "replayer" }}
+            - { name: PITWALL_AUTOSTART, value: {{ $.Values.replayer.autostart | quote }} }
+            - { name: PITWALL_AUTOSTART_SPEED, value: {{ $.Values.replayer.speed | quote }} }
+            - { name: PITWALL_LOOP, value: {{ $.Values.replayer.loop | quote }} }
+            {{- else }}
+            # The factory, reached only through the link.
+            - { name: PITWALL_UPLINK_BROKERS, value: "toxiproxy:19093" }
+            - { name: PITWALL_TOXIPROXY_URL, value: "http://toxiproxy:8474" }
+            {{- end }}
+          ports:
+            - { name: http, containerPort: 8080 }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources: {{- toYaml $svc.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            {{- if eq $name "replayer" }}
+            - { name: races, mountPath: /data }
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: { medium: Memory, sizeLimit: 32Mi }
+        {{- if eq $name "replayer" }}
+        - name: races
+          {{- if $.Values.races.hostPath }}
+          hostPath: { path: {{ $.Values.races.hostPath }}, type: DirectoryOrCreate }
+          {{- else }}
+          persistentVolumeClaim: { claimName: pitwall-races }
+          {{- end }}
+        {{- end }}
+{{- end }}
+{{- if not .Values.races.hostPath }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pitwall-races
+  labels: { app.kubernetes.io/part-of: pitwall }
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: {{ .Values.races.storage }} } }
+{{- end }}

@@ -54,11 +54,12 @@ jobs:
         with:
           version: v4.3.1
       - name: Lint
-        run: helm lint deploy/charts/pitwall deploy/charts/pitwall-data deploy/charts/pitwall-observability
+        run: helm lint deploy/charts/pitwall deploy/charts/pitwall-data deploy/charts/pitwall-observability deploy/charts/pitwall-trackside
       - name: Render with the local environment's values
         run: |
           helm template pitwall deploy/charts/pitwall -f deploy/env/local/pitwall.yaml > /dev/null
           helm template pitwall-data deploy/charts/pitwall-data -f deploy/env/local/data.yaml > /dev/null
+          helm template pitwall-trackside deploy/charts/pitwall-trackside -f deploy/env/local/pitwall.yaml -f deploy/env/local/trackside.yaml > /dev/null
       - name: Render the observability stack at its pinned versions
         run: |
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts

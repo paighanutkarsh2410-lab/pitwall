@@ -102,7 +102,7 @@ spec:
                 secretKeyRef: { name: {{ $.Values.dbSecret }}, key: PITWALL_DB_URL }
             {{- end }}
             {{- if eq $name "api" }}
-            - { name: PITWALL_REPLAYER_URL, value: "http://replayer:8080" }
+            - { name: PITWALL_REPLAYER_URL, value: {{ $.Values.replayerUrl | quote }} }
             - { name: PITWALL_LOGOS_DIR, value: /logos }
             {{- end }}
             {{- if eq $name "replayer" }}

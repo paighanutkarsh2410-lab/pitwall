@@ -1,4 +1,4 @@
-{{- if not .Values.races.hostPath }}
+{{- if and (hasKey .Values.services "replayer") (not .Values.races.hostPath) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

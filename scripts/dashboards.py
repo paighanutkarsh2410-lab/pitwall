@@ -19,7 +19,13 @@ PROM = {"type": "prometheus", "uid": "prometheus"}
 LOKI = {"type": "loki", "uid": "loki"}
 TEMPO = {"type": "tempo", "uid": "tempo"}
 
-SLOS = ("telemetry-freshness", "board-freshness", "ingest-validity", "api-availability")
+SLOS = (
+    "telemetry-freshness",
+    "board-freshness",
+    "ingest-validity",
+    "api-availability",
+    "link-catch-up",
+)
 
 
 class Layout:
@@ -113,7 +119,7 @@ def race_health() -> dict:
     L = Layout()
 
     L.row("Service level objectives")
-    for slo in SLOS:
+    for i, slo in enumerate(SLOS):
         L.add(
             stat(
                 f"{slo} · budget left (3d)",
@@ -122,7 +128,7 @@ def race_health() -> dict:
                 steps((None, "red"), (0.25, "orange"), (0.5, "green")),
                 description=f"Share of the {slo} error budget not yet spent over the last 3 days.",
             ),
-            6,
+            24 // len(SLOS) if 24 % len(SLOS) == 0 else 5 if i < len(SLOS) - 1 else 4,
             4,
         )
     L.add(
@@ -283,6 +289,113 @@ def race_health() -> dict:
         ),
         4,
         4,
+    )
+
+    L.row("Trackside link: track to factory")
+    L.add(
+        stat(
+            "Link",
+            "min(pitwall_uplink_link_up)",
+            "short",
+            steps((None, "red"), (1, "green")),
+            decimals=0,
+            description="1: the factory confirms what the trackside sends. 0: the link is down; the trackside buffers.",
+        ),
+        4,
+        4,
+    )
+    L.add(
+        stat(
+            "Events lost (24h)",
+            "sum(increase(pitwall_ingest_missing_events_total[24h])) or vector(0)",
+            "short",
+            steps((None, "green"), (1, "red")),
+            decimals=0,
+            description="Gaps in the per-car sequence numbers at the factory. Must stay 0.",
+        ),
+        4,
+        4,
+    )
+    L.add(
+        stat(
+            "Duplicates dropped (24h)",
+            "sum(increase(pitwall_ingest_duplicates_total[24h])) or vector(0)",
+            "short",
+            steps((None, "blue")),
+            decimals=0,
+            description="Events re-sent after an outage that the factory had already received.",
+        ),
+        4,
+        4,
+    )
+    L.add(
+        stat(
+            "Link downtime (24h)",
+            "sum(increase(pitwall_uplink_outage_seconds_sum[24h])) or vector(0)",
+            "s",
+            steps((None, "blue")),
+            decimals=0,
+            description="Total time the link was down over the last day.",
+        ),
+        4,
+        4,
+    )
+    L.add(
+        stat(
+            "Catch-up, worst (24h)",
+            "histogram_quantile(1, sum by (le) (increase(pitwall_uplink_catchup_seconds_bucket[24h])))",
+            "s",
+            steps((None, "green"), (60, "red")),
+            decimals=0,
+            description="Seconds from the link returning to the factory receiving current data. SLO: within 60 s.",
+        ),
+        8,
+        4,
+    )
+    L.add(
+        timeseries(
+            "Waiting at the track (backlog)",
+            [
+                target(
+                    "max(pitwall_uplink_backlog_messages)",
+                    "events not yet confirmed by the factory",
+                )
+            ],
+            "short",
+        ),
+        8,
+        7,
+    )
+    L.add(
+        timeseries(
+            "Through the link",
+            [
+                target("rate(pitwall_uplink_events_total[1m])", "events/s confirmed", "A"),
+                target(
+                    'sum(rate(pitwall_events_total{service="replayer"}[1m]))',
+                    "events/s produced at the track",
+                    "B",
+                ),
+            ],
+            "ops",
+        ),
+        8,
+        7,
+    )
+    L.add(
+        timeseries(
+            "Age of data crossing the link, p99",
+            [
+                target(
+                    'histogram_quantile(0.99, sum by (le) (rate(pitwall_event_freshness_seconds_bucket{stage="uplink"}[1m])))',
+                    "p99",
+                )
+            ],
+            "s",
+            thresholds=steps((None, "green"), (1, "orange"), (10, "red")),
+        ),
+        8,
+        7,
     )
 
     L.row("History and API")

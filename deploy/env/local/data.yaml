@@ -1,5 +1,7 @@
 # The local kind cluster (scripts/cluster-up.sh).
 redpanda:
   storage: 4Gi
+  # The trackside uplink connects through the link (Toxiproxy in the trackside namespace).
+  uplinkAdvertise: toxiproxy.trackside.svc.cluster.local:19093
 timescaledb:
   storage: 4Gi

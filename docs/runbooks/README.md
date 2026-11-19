@@ -11,6 +11,8 @@ the pit wall, how to confirm it, and what to do.
 | [api-availability](api-availability.md) | `PitwallApiAvailabilityBudget…` |
 | [consumer-lag](consumer-lag.md) | `PitwallConsumerLagHigh`, `PitwallReplayBehind` |
 | [service-down](service-down.md) | `PitwallServiceDown`, `PitwallPodRestarting` |
+| [trackside-link](trackside-link.md) | `PitwallLinkDown`, `PitwallEventsLost`, `PitwallUplinkBacklog` |
+| [link-catch-up](link-catch-up.md) | `PitwallLinkCatchUpBudgetPage`, `…Ticket` |
 
 Useful everywhere:
 

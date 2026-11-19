@@ -1,0 +1,6 @@
+apiVersion: v2
+name: pitwall-trackside
+description: The trackside site - its own Redpanda (the buffer), the replayer (the cars), the uplink and the link to the factory (Toxiproxy)
+type: application
+version: 0.1.0
+appVersion: "0.4.0"

@@ -224,10 +224,66 @@ groups:
       summary: 'api-availability: error budget burning too fast (ticket)'
       description: 'SLO: 99.5% of pit-wall API requests succeed. Objective 99.5%.'
       runbook_url: https://github.com/paighanutkarsh2410-lab/pitwall/blob/main/docs/runbooks/api-availability.md
+- name: pitwall-slo-link-catch-up
+  rules:
+  - record: pitwall:slo_error_ratio:rate5m
+    expr: (((sum(rate(pitwall_uplink_catchup_seconds_count{}[5m])) - sum(rate(pitwall_uplink_catchup_seconds_bucket{le=~"60|60.0"}[5m])))) or vector(0)) / (sum(rate(pitwall_uplink_catchup_seconds_count{}[5m])) > 0)
+    labels:
+      slo: link-catch-up
+  - record: pitwall:slo_error_ratio:rate30m
+    expr: (((sum(rate(pitwall_uplink_catchup_seconds_count{}[30m])) - sum(rate(pitwall_uplink_catchup_seconds_bucket{le=~"60|60.0"}[30m])))) or vector(0)) / (sum(rate(pitwall_uplink_catchup_seconds_count{}[30m])) > 0)
+    labels:
+      slo: link-catch-up
+  - record: pitwall:slo_error_ratio:rate1h
+    expr: (((sum(rate(pitwall_uplink_catchup_seconds_count{}[1h])) - sum(rate(pitwall_uplink_catchup_seconds_bucket{le=~"60|60.0"}[1h])))) or vector(0)) / (sum(rate(pitwall_uplink_catchup_seconds_count{}[1h])) > 0)
+    labels:
+      slo: link-catch-up
+  - record: pitwall:slo_error_ratio:rate2h
+    expr: (((sum(rate(pitwall_uplink_catchup_seconds_count{}[2h])) - sum(rate(pitwall_uplink_catchup_seconds_bucket{le=~"60|60.0"}[2h])))) or vector(0)) / (sum(rate(pitwall_uplink_catchup_seconds_count{}[2h])) > 0)
+    labels:
+      slo: link-catch-up
+  - record: pitwall:slo_error_ratio:rate6h
+    expr: (((sum(rate(pitwall_uplink_catchup_seconds_count{}[6h])) - sum(rate(pitwall_uplink_catchup_seconds_bucket{le=~"60|60.0"}[6h])))) or vector(0)) / (sum(rate(pitwall_uplink_catchup_seconds_count{}[6h])) > 0)
+    labels:
+      slo: link-catch-up
+  - record: pitwall:slo_error_ratio:rate1d
+    expr: (((sum(rate(pitwall_uplink_catchup_seconds_count{}[1d])) - sum(rate(pitwall_uplink_catchup_seconds_bucket{le=~"60|60.0"}[1d])))) or vector(0)) / (sum(rate(pitwall_uplink_catchup_seconds_count{}[1d])) > 0)
+    labels:
+      slo: link-catch-up
+  - record: pitwall:slo_error_ratio:rate3d
+    expr: (((sum(rate(pitwall_uplink_catchup_seconds_count{}[3d])) - sum(rate(pitwall_uplink_catchup_seconds_bucket{le=~"60|60.0"}[3d])))) or vector(0)) / (sum(rate(pitwall_uplink_catchup_seconds_count{}[3d])) > 0)
+    labels:
+      slo: link-catch-up
+  - record: pitwall:slo_objective
+    expr: vector(0.99)
+    labels:
+      slo: link-catch-up
+  - record: pitwall:slo_error_budget_remaining:3d
+    expr: 1 - (pitwall:slo_error_ratio:rate3d{slo="link-catch-up"} / 0.01)
+    labels:
+      slo: link-catch-up
+  - alert: PitwallLinkCatchUpBudgetPage
+    expr: (pitwall:slo_error_ratio:rate1h{slo="link-catch-up"} > 0.144 and pitwall:slo_error_ratio:rate5m{slo="link-catch-up"} > 0.144) or (pitwall:slo_error_ratio:rate6h{slo="link-catch-up"} > 0.06 and pitwall:slo_error_ratio:rate30m{slo="link-catch-up"} > 0.06)
+    labels:
+      severity: page
+      slo: link-catch-up
+    annotations:
+      summary: 'link-catch-up: error budget burning too fast (page)'
+      description: 'SLO: 99% of trackside link outages are caught up within 60 s of the link returning. Objective 99.0%.'
+      runbook_url: https://github.com/paighanutkarsh2410-lab/pitwall/blob/main/docs/runbooks/link-catch-up.md
+  - alert: PitwallLinkCatchUpBudgetTicket
+    expr: (pitwall:slo_error_ratio:rate1d{slo="link-catch-up"} > 0.03 and pitwall:slo_error_ratio:rate2h{slo="link-catch-up"} > 0.03) or (pitwall:slo_error_ratio:rate3d{slo="link-catch-up"} > 0.01 and pitwall:slo_error_ratio:rate6h{slo="link-catch-up"} > 0.01)
+    labels:
+      severity: ticket
+      slo: link-catch-up
+    annotations:
+      summary: 'link-catch-up: error budget burning too fast (ticket)'
+      description: 'SLO: 99% of trackside link outages are caught up within 60 s of the link returning. Objective 99.0%.'
+      runbook_url: https://github.com/paighanutkarsh2410-lab/pitwall/blob/main/docs/runbooks/link-catch-up.md
 - name: pitwall-symptoms
   rules:
   - alert: PitwallServiceDown
-    expr: up{namespace="pitwall"} == 0
+    expr: up{namespace=~"pitwall|trackside"} == 0
     for: 1m
     labels:
       severity: page
@@ -258,8 +314,32 @@ groups:
     annotations:
       summary: The replayer is {{ $value | humanizeDuration }} behind the race's schedule
       runbook_url: https://github.com/paighanutkarsh2410-lab/pitwall/blob/main/docs/runbooks/consumer-lag.md
+  - alert: PitwallLinkDown
+    expr: max(pitwall_uplink_link_up) == 0
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: 'The trackside link is down: the factory is getting no data (it is buffered)'
+      runbook_url: https://github.com/paighanutkarsh2410-lab/pitwall/blob/main/docs/runbooks/trackside-link.md
+  - alert: PitwallEventsLost
+    expr: sum(increase(pitwall_ingest_missing_events_total[10m])) > 0
+    for: 0m
+    labels:
+      severity: page
+    annotations:
+      summary: '{{ $value }} events never reached the factory: data was lost'
+      runbook_url: https://github.com/paighanutkarsh2410-lab/pitwall/blob/main/docs/runbooks/trackside-link.md
+  - alert: PitwallUplinkBacklog
+    expr: max(pitwall_uplink_backlog_messages) > 50000
+    for: 5m
+    labels:
+      severity: ticket
+    annotations:
+      summary: '{{ $value }} trackside events are waiting for the link'
+      runbook_url: https://github.com/paighanutkarsh2410-lab/pitwall/blob/main/docs/runbooks/trackside-link.md
   - alert: PitwallPodRestarting
-    expr: increase(kube_pod_container_status_restarts_total{namespace="pitwall"}[15m]) > 2
+    expr: increase(kube_pod_container_status_restarts_total{namespace=~"pitwall|trackside"}[15m]) > 2
     for: 0m
     labels:
       severity: ticket

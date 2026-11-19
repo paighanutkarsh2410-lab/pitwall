@@ -1,0 +1,44 @@
+# The trackside site: what a team runs in its garage data centre at the circuit.
+image:
+  repository: ghcr.io/paighanutkarsh2410-lab/pitwall
+  tag: main
+  pullPolicy: IfNotPresent
+
+# The trackside's own Redpanda: the cars stream into it, and it holds everything the factory
+# hasn't confirmed yet. Small: it only needs pitwall.raw.
+redpanda:
+  image: redpandadata/redpanda:v26.2.6
+  memory: 384M
+  storage: 2Gi
+  resources:
+    requests: { cpu: 100m, memory: 480Mi }
+    limits: { memory: 640Mi }
+
+# The link to the factory. Toxiproxy forwards it and can slow, narrow or cut it for drills.
+link:
+  image: ghcr.io/shopify/toxiproxy:2.13.0
+  # The factory broker's uplink listener (pitwall-data's second listener).
+  factory: redpanda.pitwall.svc.cluster.local:9093
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { memory: 64Mi }
+
+replayer:
+  autostart: 2024-sao-paulo
+  speed: 1
+  loop: true
+  resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { memory: 512Mi } }
+
+uplink:
+  resources: { requests: { cpu: 50m, memory: 96Mi }, limits: { memory: 256Mi } }
+
+# Races: the laptop's ~/.pitwall (mounted into the kind node), or a volume.
+races:
+  hostPath: ""
+  storage: 1Gi
+
+observability:
+  otlpEndpoint: ""
+
+# Link drills (POST /link on the uplink). Off unless an environment turns it on.
+faults: false

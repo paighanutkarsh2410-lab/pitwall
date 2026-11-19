@@ -3,8 +3,6 @@ image:
   # CI sets this to the commit it just built, scanned and signed (the "promote" job).
   tag: 562987c955be41cef32b9d863acd5a515ed79f09
   pullPolicy: IfNotPresent  # tags are commit SHAs: an image never changes under a tag
-races:
-  hostPath: /pitwall-data  # the laptop's ~/.pitwall, mounted into the kind node
 logos:
   hostPath: /pitwall-logos  # the laptop's assets/private/
 observability:
@@ -12,7 +10,3 @@ observability:
 faults: true  # drills: inject delays to rehearse the runbooks
 ingress:
   hosts: [pitwall.localtest.me, localhost]
-replayer:
-  autostart: 2024-sao-paulo
-  speed: 1
-  loop: true

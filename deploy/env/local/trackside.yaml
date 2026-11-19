@@ -1,0 +1,8 @@
+# The local kind cluster's trackside site. The image tag, tracing and the drill switch come from
+# pitwall.yaml (both sites always run the same signed image).
+races:
+  hostPath: /pitwall-data  # the laptop's ~/.pitwall, mounted into the kind node
+replayer:
+  autostart: 2024-sao-paulo
+  speed: 1
+  loop: true

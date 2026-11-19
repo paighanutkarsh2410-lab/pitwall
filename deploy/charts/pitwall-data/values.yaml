@@ -3,6 +3,9 @@ redpanda:
   # Redpanda wants dedicated cores and memory; these settings let it share a laptop.
   memory: 640M
   storage: 4Gi
+  # Where the trackside uplink reaches this broker: through the link (Toxiproxy). Empty: no
+  # trackside, a single listener.
+  uplinkAdvertise: ""
   resources:
     requests: { cpu: 250m, memory: 800Mi }
     limits: { memory: 1Gi }

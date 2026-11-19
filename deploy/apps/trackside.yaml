@@ -1,0 +1,24 @@
+# The trackside site: its own Redpanda, the replayer, the uplink and the link to the factory.
+# Wave 1: after the factory's Redpanda (wave 0), whose uplink listener it connects to.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pitwall-trackside
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/paighanutkarsh2410-lab/pitwall.git
+    targetRevision: main
+    path: deploy/charts/pitwall-trackside
+    helm:
+      # The image tag is promoted into pitwall.yaml; both sites read it from there.
+      valueFiles: [../../env/local/pitwall.yaml, ../../env/local/trackside.yaml]
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: trackside
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

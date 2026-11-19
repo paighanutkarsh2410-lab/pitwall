@@ -1,0 +1,70 @@
+# The link between the trackside and the factory: Toxiproxy in front of the factory's uplink
+# listener. In normal running it passes everything straight through; in a drill the uplink tells it
+# to add latency, cap bandwidth, or cut the link entirely.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: toxiproxy
+  labels: { app.kubernetes.io/name: toxiproxy, app.kubernetes.io/part-of: pitwall }
+data:
+  toxiproxy.json: |
+    [
+      {
+        "name": "factory-kafka",
+        "listen": "0.0.0.0:19093",
+        "upstream": "{{ .Values.link.factory }}",
+        "enabled": true
+      }
+    ]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: toxiproxy
+  labels: { app.kubernetes.io/name: toxiproxy, app.kubernetes.io/part-of: pitwall }
+spec:
+  selector: { app.kubernetes.io/name: toxiproxy }
+  ports:
+    - { name: link, port: 19093, targetPort: link }
+    - { name: api, port: 8474, targetPort: api }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: toxiproxy
+  labels: { app.kubernetes.io/name: toxiproxy, app.kubernetes.io/part-of: pitwall }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: toxiproxy }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: toxiproxy, app.kubernetes.io/part-of: pitwall }
+      annotations:
+        checksum/config: {{ .Values.link.factory | sha256sum | trunc 12 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: toxiproxy
+          image: {{ .Values.link.image }}
+          args: ["-host", "0.0.0.0", "-config", "/config/toxiproxy.json"]
+          ports:
+            - { name: link, containerPort: 19093 }
+            - { name: api, containerPort: 8474 }
+          readinessProbe:
+            httpGet: { path: /version, port: api }
+            periodSeconds: 5
+          resources: {{- toYaml .Values.link.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: config, mountPath: /config, readOnly: true }
+      volumes:
+        - name: config
+          configMap: { name: toxiproxy }
