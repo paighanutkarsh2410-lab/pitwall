@@ -214,7 +214,8 @@ main { position: relative; z-index: 2; }
   .bar__tabs a { padding: 0 0.5rem; font-size: 0.68rem; letter-spacing: 0.06em; }
   /* The car takes the top half; the type sits below it. */
   .hero__copy { top: auto; bottom: 8.5rem; transform: none; max-width: none; right: var(--gutter); }
-  .rev { bottom: 1.2rem; }
+  .rev { bottom: 6.6rem; }
+  .hero__copy--race { bottom: 13.6rem; }
   .rev__rpm b { font-size: 1.9rem; }
   .hero__ghost { font-size: 58vw; top: 30%; }
   .title__bold { font-size: min(5rem, calc(88vw / (var(--name-chars, 6) * 0.82))); }
@@ -267,7 +268,7 @@ main { position: relative; z-index: 2; }
 /* Before a race is chosen (data-mode="lobby") the page is the site's own: the newest car in
    shadow, the way in, and every race under it. Choosing one (data-mode="race") turns it into that
    race: its winner, the launch on scroll and the title card. main.ts switches the mode. */
-body[data-mode="lobby"] :is(.hero__copy--race, .rev, .corner, .card) { display: none; }
+body[data-mode="lobby"] :is(.hero__copy--race, .rev, .corner, .card, .cue) { display: none; }
 body[data-mode="race"] :is(.hero__copy--lobby, .catalogue) { display: none; }
 .hero__copy--lobby .title__bold { --name-chars: 7; }
 .hero__copy--lobby .title__script { color: var(--ink); }
@@ -300,4 +301,39 @@ body[data-mode="lobby"] .hero__ghost { -webkit-text-stroke-color: rgb(244 243 24
 .catalogue .seasons { border-top: 2px solid var(--accent); }
 @media (max-width: 860px) {
   .catalogue__head { grid-template-columns: 1fr; }
+}
+
+/* ------------------------------------------------- the cue to scroll on -- */
+/* Bottom centre, once the winner's car has braked into place: a label over a thin line with a
+   light running down it. The first nudge of scroll plays the launch by itself (main.ts). */
+.cue {
+  position: absolute; left: 50%; bottom: clamp(1.25rem, 3.5vh, 2.25rem); z-index: 5; transform: translateX(-50%);
+  background: none; border: 0; padding: 0.5rem 1rem; color: var(--ink); cursor: pointer;
+}
+.cue__in { display: grid; justify-items: center; gap: 0.7rem; opacity: 0; }
+.cue__label { font: 700 0.72rem/1 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; white-space: nowrap; }
+.cue__line { position: relative; width: 1px; height: 2.6rem; overflow: hidden; background: rgb(244 243 241 / 0.18); }
+.cue__line::after {
+  content: ""; position: absolute; left: 0; top: 0; width: 1px; height: 45%;
+  background: linear-gradient(to bottom, transparent, var(--accent) 60%, var(--ink));
+  animation: cue-run 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes cue-run { from { transform: translateY(-100%); } to { transform: translateY(230%); } }
+.cue:hover .cue__label { color: var(--accent); }
+@media (min-width: 861px) { .rev { width: min(26rem, 34vw); } }
+@media (max-width: 860px) {
+  .cue { bottom: 0.6rem; }
+  .cue__line { height: 2rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cue { bottom: auto; top: calc(100vh - 6rem); }
+  .cue__line::after { animation: none; top: 55%; }
+}
+/* Short phones (an SE): the car keeps the top; the story line and the readout's footnote go. */
+@media (max-width: 860px) and (max-height: 740px) {
+  .hero__copy--race .hero__sub, .rev__src { display: none; }
+  .hero__copy--race { bottom: 10.8rem; }
+  .rev { bottom: 5.6rem; }
+  .hero__copy--lobby { bottom: 2rem; }
+  .hero__copy--lobby .hero__sub { font-size: 0.88rem; }
 }

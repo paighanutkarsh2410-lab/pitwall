@@ -1,4 +1,5 @@
 import gsap from "gsap";
+import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import * as THREE from "three";
 import { type Car, type CarInfo, loadCar, loadCars, preload, silhouette } from "./car";
@@ -7,7 +8,7 @@ import { createStage } from "./stage";
 import { cssVars, THEMES, type Theme, themeFor } from "./theme";
 import "./style.css";
 
-gsap.registerPlugin(ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
 /** A race in public/races.json (written by scripts/race_catalogue.py from OpenF1). */
 interface Race {
@@ -35,6 +36,7 @@ const gearOut = $<HTMLElement>(".rev__g");
 const speedOut = $<HTMLElement>(".rev__s");
 const fill = $<HTMLElement>(".rev__fill");
 const card = $<HTMLElement>(".card");
+const cue = $<HTMLElement>(".cue__in");
 const CHOICE_KEY = "pitwall.choice"; // shared with the pit wall: the race it opens on
 const hero = $<HTMLElement>(".hero");
 const picker = $<HTMLDialogElement>(".picker");
@@ -246,9 +248,13 @@ async function main() {
     if (info) preload(info);
     const leaving = car;
     const exit = leaving && !reduce ? gsap.to(shot, { entry: -16, duration: 0.75, ease: "power2.in" }) : null;
+    gsap.killTweensOf(cue);
+    gsap.to(cue, { opacity: 0, duration: 0.25 });
     const [arriving] = await Promise.all([loadCar(info), exit]);
     if (mine !== turn) return; // something else was chosen meanwhile
     if (leaving) stage.scene.remove(leaving.root);
+    // The cue to scroll comes up as the winner's car brakes into place.
+    if (!dark) gsap.fromTo(cue, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out", delay: reduce ? 0 : first ? 0.9 : 1.2 });
     car = dark ? silhouette(arriving) : arriving;
     stage.scene.add(car.root);
     $<HTMLElement>(".foot__model").textContent = car.credit;
@@ -377,23 +383,67 @@ async function main() {
   function enableLaunch() {
     if (reduce || launch) return;
     launch = gsap.timeline({
-      scrollTrigger: { trigger: hero, start: "top top", end: "+=240%", pin: true, scrub: 0.6 },
+      scrollTrigger: {
+        trigger: hero,
+        start: "top top",
+        end: "+=240%",
+        pin: true,
+        scrub: 0.6,
+        // A nudge is enough: the first bit of scroll either way plays the whole launch (or its
+        // return) by itself, as if the page were pulled along by the car.
+        onUpdate: (self) => {
+          if (auto) return;
+          if (self.direction > 0 && self.progress > 0.002 && self.progress < 0.97) carry(self.end, 1);
+          else if (self.direction < 0 && self.progress < 0.998 && self.progress > 0.03) carry(self.start, -1);
+        },
+      },
     });
     launch
       .to(shot, { launch: 1, duration: 0.18, ease: "power2.in" }, 0)
+      .to(".cue", { opacity: 0, y: 20, duration: 0.08, ease: "power1.in" }, 0)
       .to(".hero__copy--race", { xPercent: -40, opacity: 0, duration: 0.22, ease: "power2.in" }, 0.08)
       .to(".hero__ghost", { xPercent: -30, opacity: 0, duration: 0.3, ease: "power1.in" }, 0.1)
       .to(shot, { yaw: 0, duration: 0.3, ease: "power2.inOut" }, 0.18)
       .to(shot, { roll: 1, duration: 0.82, ease: "power2.in" }, 0.18)
       .to(".rev", { opacity: 0, duration: 0.1 }, 0.9);
   }
+  // The carry: the page scrolls itself through the launch. While it runs, the wheel, touch and
+  // keys are held so they can't fight it; it takes about as long as a real launch to the first
+  // corner, slower back.
+  let auto: gsap.core.Tween | null = null;
+  const hold = (e: Event) => {
+    if (auto) e.preventDefault();
+  };
+  window.addEventListener("wheel", hold, { passive: false });
+  window.addEventListener("touchmove", hold, { passive: false });
+  window.addEventListener("keydown", (e) => {
+    if (auto && ["ArrowDown", "ArrowUp", "PageDown", "PageUp", " ", "Home", "End"].includes(e.key)) e.preventDefault();
+  });
+  function carry(to: number, direction: 1 | -1) {
+    auto = gsap.to(window, {
+      scrollTo: { y: to, autoKill: false },
+      duration: direction > 0 ? 2.6 : 1.8,
+      ease: direction > 0 ? "power1.inOut" : "power2.inOut",
+      onComplete: () => {
+        // Let the scrub settle before listening again, so the tail of the carry isn't read as a new nudge.
+        gsap.delayedCall(0.7, () => (auto = null));
+      },
+    });
+  }
+  $(".cue").addEventListener("click", () => {
+    if (launch?.scrollTrigger && !auto) carry(launch.scrollTrigger.end, 1);
+    else if (reduce) card.scrollIntoView({ behavior: "auto" });
+  });
+
   function disableLaunch() {
     if (!launch) return;
     launch.scrollTrigger?.kill(true);
     launch.progress(0).kill();
     launch = null;
     Object.assign(shot, { launch: 0, roll: 0 }, home());
-    gsap.set([".hero__copy--race", ".hero__ghost", ".rev"], { clearProps: "transform,opacity" });
+    auto?.kill();
+    auto = null;
+    gsap.set([".hero__copy--race", ".hero__ghost", ".rev", ".cue"], { clearProps: "transform,opacity" });
   }
 
   buildPicker(playable, cars, (r) => void choose(r));
