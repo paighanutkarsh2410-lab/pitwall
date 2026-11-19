@@ -5,8 +5,15 @@
   --black: #070708;
   --ink: #f4f3f1;
   --ink-soft: #a7a9ae;
-  --red: #e10600;
-  --red-deep: #7a0400;
+  /* The team grade (theme.ts sets these per team; Red Bull's red is the default). */
+  --accent: #e10600;
+  --accent-mid: #b80500;
+  --accent-deep: #7a0400;
+  --on-accent: #ffffff;
+  --cta-bg: #ffffff;
+  --cta-ink: #120202;
+  --script-ink: #e10600;
+  --haze: #1c2a78;
   --display: "Archivo", system-ui, sans-serif;
   --script: "Mr Dafoe", "Brush Script MT", cursive;
   --mono: "JetBrains Mono", ui-monospace, monospace;
@@ -22,14 +29,15 @@ body {
   line-height: 1.6; letter-spacing: 0.005em;
   /* The studio: a red key glow off to the right, falling to black. The canvas is transparent. */
   background:
-    radial-gradient(60vw 70vh at 72% 46%, rgb(225 6 0 / 0.16), transparent 70%),
+    radial-gradient(60vw 70vh at 72% 46%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+    radial-gradient(50vw 60vh at 95% 10%, color-mix(in srgb, var(--haze) 22%, transparent), transparent 70%),
     radial-gradient(120vw 90vh at 70% 110%, rgb(255 255 255 / 0.06), transparent 60%),
     var(--black);
   background-attachment: fixed;
 }
 a { color: inherit; text-underline-offset: 0.2em; }
-:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
-::selection { background: var(--red); color: #fff; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+::selection { background: var(--accent); color: #fff; }
 
 .stage { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; }
 
@@ -41,7 +49,7 @@ a { color: inherit; text-underline-offset: 0.2em; }
 }
 .bar__mark {
   display: flex; align-items: center; padding: 0 2.2rem 0 var(--gutter);
-  background: var(--red); color: #fff; text-decoration: none;
+  background: var(--accent); color: var(--on-accent); text-decoration: none;
   font-weight: 900; font-style: italic; font-variation-settings: "wdth" 125; letter-spacing: 0.02em;
   clip-path: polygon(0 0, 100% 0, calc(100% - 1rem) 100%, 0 100%);
 }
@@ -51,7 +59,7 @@ a { color: inherit; text-underline-offset: 0.2em; }
   font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft);
   border-bottom: 2px solid transparent; transition: color 160ms var(--ease-out), border-color 160ms var(--ease-out);
 }
-.bar__tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--red); }
+.bar__tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
 .bar__tabs a:hover { color: var(--ink); }
 
 main { position: relative; z-index: 2; }
@@ -72,7 +80,7 @@ main { position: relative; z-index: 2; }
 .kicker { margin: 0 0 1.25rem; font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-soft); }
 .title { margin: 0; line-height: 0.82; }
 .title__script {
-  display: block; font-family: var(--script); font-weight: 400; color: var(--red);
+  display: block; font-family: var(--script); font-weight: 400; color: var(--script-ink);
   font-size: clamp(2.6rem, 1.4rem + 4.2vw, 5.4rem); letter-spacing: 0; line-height: 1; margin-left: 0.15em;
   transform: rotate(-4deg); transform-origin: left bottom;
 }
@@ -93,7 +101,7 @@ main { position: relative; z-index: 2; }
 .rev__rpm b { font-size: 2.6rem; font-weight: 700; line-height: 1; }
 .rev__rpm b { display: inline-block; min-width: 5.2ch; text-align: right; }
 .rev__bar { margin-top: 0.6rem; height: 6px; background: rgb(244 243 241 / 0.12); overflow: hidden; }
-.rev__fill { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #f4f3f1 0 70%, var(--red) 70%); transform-origin: left; transform: scaleX(0); }
+.rev__fill { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #f4f3f1 0 70%, var(--accent) 70%); transform-origin: left; transform: scaleX(0); }
 .rev__src { margin: 0.5rem 0 0; font-size: 0.68rem; color: var(--ink-soft); letter-spacing: 0.04em; }
 
 .corner { position: absolute; font-family: var(--mono); font-size: 0.8rem; font-weight: 700; color: var(--ink-soft); z-index: 3; }
@@ -108,41 +116,41 @@ main { position: relative; z-index: 2; }
 .card {
   position: absolute; inset: 0; z-index: 4; overflow: hidden; display: grid; align-items: center;
   padding: calc(var(--bar-h) + 3rem) var(--gutter) 4rem;
-  background: linear-gradient(115deg, var(--red) 0%, #b80500 55%, var(--red-deep) 100%);
+  background: linear-gradient(115deg, var(--accent) 0%, var(--accent-mid) 55%, var(--accent-deep) 100%);
   clip-path: inset(0 0 0 var(--reveal, 0%));
-  color: #fff;
+  color: var(--on-accent);
 }
 .card::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: repeating-linear-gradient(115deg, rgb(255 255 255 / 0.05) 0 2px, transparent 2px 18px);
+  background: repeating-linear-gradient(115deg, color-mix(in srgb, var(--on-accent) 6%, transparent) 0 2px, transparent 2px 18px);
   mask-image: linear-gradient(to right, transparent, #000 60%);
 }
 .card__ghost {
   position: absolute; left: -3vw; bottom: -6vw; font-weight: 900; font-variation-settings: "wdth" 125;
   font-size: 22vw; line-height: 0.8; letter-spacing: -0.04em; white-space: nowrap;
-  color: transparent; -webkit-text-stroke: 1.5px rgb(255 255 255 / 0.22); user-select: none;
+  color: transparent; -webkit-text-stroke: 1.5px color-mix(in srgb, var(--on-accent) 24%, transparent); user-select: none;
 }
 .card__body { position: relative; z-index: 2; max-width: 60rem; }
-.card__team { margin: 0 0 1rem; font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(255 255 255 / 0.85); }
+.card__team { margin: 0 0 1rem; font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase; color: color-mix(in srgb, var(--on-accent) 85%, transparent); }
 .card__name { margin: 0; line-height: 0.85; }
-.card__first { display: block; font-family: var(--script); font-weight: 400; font-size: clamp(3rem, 1.6rem + 5vw, 6.5rem); color: #fff; margin-left: 0.2em; transform: rotate(-4deg); transform-origin: left bottom; }
+.card__first { display: block; font-family: var(--script); font-weight: 400; font-size: clamp(3rem, 1.6rem + 5vw, 6.5rem); color: var(--on-accent); margin-left: 0.2em; transform: rotate(-4deg); transform-origin: left bottom; }
 .card__last { display: block; font-weight: 900; font-variation-settings: "wdth" 125; font-size: clamp(3.2rem, 0.8rem + 8.6vw, 10.5rem); letter-spacing: -0.035em; margin-top: -0.1em; }
 .card__facts { display: grid; grid-template-columns: repeat(5, minmax(0, auto)); gap: 1rem 2.6rem; margin: 3rem 0 0; justify-content: start; }
-.card__facts dt { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgb(255 255 255 / 0.8); }
+.card__facts dt { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: color-mix(in srgb, var(--on-accent) 80%, transparent); }
 .card__facts dd { margin: 0.35rem 0 0; font-weight: 800; font-variation-settings: "wdth" 110; font-size: clamp(1.8rem, 1.2rem + 1.6vw, 3rem); line-height: 1; font-variant-numeric: tabular-nums; }
 .card__facts small { font-size: 0.45em; margin-left: 0.1em; opacity: 0.8; }
 .card__actions { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; margin: 3rem 0 0; }
 .cta {
   display: inline-flex; align-items: center; padding: 0.95rem 2.4rem 0.95rem 1.5rem;
-  background: #fff; color: #120202; text-decoration: none; font-weight: 800; font-size: 0.9rem;
+  background: var(--cta-bg); color: var(--cta-ink); text-decoration: none; font-weight: 800; font-size: 0.9rem;
   text-transform: uppercase; letter-spacing: 0.08em; font-variation-settings: "wdth" 112;
   clip-path: polygon(0 0, 100% 0, calc(100% - 0.8rem) 100%, 0 100%);
   transition: transform 140ms var(--ease-out);
 }
 .cta:hover { transform: translateY(-1px); }
 .cta:active { transform: scale(0.97); }
-.more { font-weight: 700; color: #fff; }
-.card :focus-visible { outline-color: #fff; }
+.more { font-weight: 700; color: var(--on-accent); }
+.card :focus-visible { outline-color: var(--on-accent); }
 
 .card__note { margin: 1rem 0 0; font-size: 0.8rem; color: rgb(255 255 255 / 0.8); max-width: 50ch; }
 .card__note:empty { display: none; }
@@ -155,8 +163,8 @@ main { position: relative; z-index: 2; }
   font: 800 0.85rem/1 var(--display); letter-spacing: 0.12em; text-transform: uppercase; font-variation-settings: "wdth" 112;
   transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 120ms var(--ease-out);
 }
-.pick::before { content: ""; width: 0.55rem; height: 0.55rem; background: var(--red); transform: rotate(45deg); }
-.pick:hover { border-color: var(--red); background: rgb(225 6 0 / 0.18); }
+.pick::before { content: ""; width: 0.55rem; height: 0.55rem; background: var(--accent); transform: rotate(45deg); }
+.pick:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
 .pick:active { transform: scale(0.97); }
 .pick__count { font-family: var(--mono); font-weight: 500; color: var(--ink-soft); letter-spacing: 0.04em; }
 
@@ -168,9 +176,9 @@ main { position: relative; z-index: 2; }
 .picker[open] { display: grid; grid-template-rows: auto 1fr; animation: picker-in 260ms var(--ease-out); }
 .picker::backdrop { background: rgb(7 7 8 / 0.7); backdrop-filter: blur(6px); }
 @keyframes picker-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
-.picker__head { display: flex; justify-content: space-between; align-items: center; padding: 1.4rem 2rem; border-bottom: 2px solid var(--red); }
+.picker__head { display: flex; justify-content: space-between; align-items: center; padding: 1.4rem 2rem; border-bottom: 2px solid var(--accent); }
 .picker__title { margin: 0; font-weight: 900; font-variation-settings: "wdth" 125; font-size: 2rem; letter-spacing: -0.02em; line-height: 1; }
-.picker__script { font-family: var(--script); font-weight: 400; color: var(--red); font-size: 1.3em; margin-right: 0.2em; }
+.picker__script { font-family: var(--script); font-weight: 400; color: var(--accent); font-size: 1.3em; margin-right: 0.2em; }
 .picker__close { background: none; border: 1px solid rgb(244 243 241 / 0.3); color: var(--ink); padding: 0.55rem 1rem; cursor: pointer;
   font: 700 0.75rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
 .picker__close:hover { border-color: var(--ink); }
@@ -186,8 +194,8 @@ main { position: relative; z-index: 2; }
   padding: 0.62rem 1.25rem; background: none; border: 0; border-left: 3px solid transparent; color: inherit; text-align: left; cursor: pointer;
   transition: background-color 120ms var(--ease-out), border-color 120ms var(--ease-out);
 }
-.race:hover, .race:focus-visible { background: rgb(255 255 255 / 0.05); border-left-color: var(--team, var(--red)); outline: none; }
-.race[aria-current="true"] { background: rgb(225 6 0 / 0.16); border-left-color: var(--red); }
+.race:hover, .race:focus-visible { background: rgb(255 255 255 / 0.05); border-left-color: var(--team, var(--accent)); outline: none; }
+.race[aria-current="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); border-left-color: var(--accent); }
 .race__round { font: 600 0.72rem/1 var(--mono); color: var(--ink-soft); }
 .race__name { font-weight: 700; font-size: 0.9rem; line-height: 1.25; }
 .race__name small { display: block; font: 500 0.68rem/1.4 var(--mono); color: var(--ink-soft); letter-spacing: 0.04em; }
@@ -229,4 +237,26 @@ main { position: relative; z-index: 2; }
   .hero__copy, .hero__ghost { top: 50vh; }
   .rev { bottom: auto; top: calc(100vh - 8rem); }
   .corner--br { bottom: auto; top: calc(100vh - 3rem); }
+}
+
+/* --------------------------------------------- the wash between two teams -- */
+/* When a different team's car arrives, its colour blooms out from the car over everything, the
+   grade changes underneath, and the wash fades. main.ts runs it. */
+.wash {
+  position: fixed; inset: 0; z-index: 70; pointer-events: none; overflow: hidden;
+  display: grid; place-items: center;
+  background:
+    radial-gradient(circle at var(--wx, 70%) var(--wy, 55%), var(--wash-a) 0%, var(--wash-b) 45%, var(--wash-c) 100%);
+  clip-path: circle(0% at var(--wx, 70%) var(--wy, 55%));
+  opacity: 0; visibility: hidden;
+}
+.wash::before {
+  content: ""; position: absolute; inset: -10%;
+  background: repeating-linear-gradient(115deg, rgb(255 255 255 / 0.09) 0 3px, transparent 3px 26px);
+  transform: translateX(var(--wash-shift, 0));
+}
+.wash__word {
+  position: relative; margin: 0; font-family: var(--script); font-size: clamp(5rem, 2rem + 14vw, 16rem);
+  color: var(--wash-ink); line-height: 1; transform: rotate(-6deg); white-space: nowrap;
+  text-shadow: 0 10px 40px rgb(0 0 0 / 0.25);
 }

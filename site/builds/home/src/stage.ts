@@ -17,11 +17,14 @@ export interface Stage {
   bloom: UnrealBloomPass;
   rim: THREE.SpotLight;
   backdrop: THREE.Mesh;
+  /** Re-grades the studio for a team: the coloured strip in the reflections, the backdrop glow
+   * and the rim light. Rebuilding the environment takes a few milliseconds. */
+  setAccent: (glow: number, rim: number) => void;
   resize: () => void;
   render: () => void;
 }
 
-function studioEnvironment(renderer: THREE.WebGLRenderer): THREE.Texture {
+function studioEnvironment(renderer: THREE.WebGLRenderer, accent = 0xff1a0a): THREE.Texture {
   const room = new THREE.Scene();
   room.background = new THREE.Color(0x030304);
   const strip = (w: number, h: number, colour: number, power: number, at: [number, number, number], face: [number, number, number]) => {
@@ -36,7 +39,7 @@ function studioEnvironment(renderer: THREE.WebGLRenderer): THREE.Texture {
   strip(9, 1.6, 0xffffff, 7, [0, 7, 0], [0, 0, 0]); // the overhead softbox
   strip(0.5, 7, 0xffffff, 3.5, [-8, 2.5, 2], [0, 1, 0]); // a tall strip, camera-left
   strip(0.5, 7, 0xffffff, 2, [8, 2.5, -1], [0, 1, 0]); // a dimmer one, camera-right
-  strip(12, 1, 0xff1a0a, 2.5, [0, 1.5, -9], [0, 1, 0]); // the red line behind
+  strip(12, 1, accent, 2.5, [0, 1.5, -9], [0, 1, 0]); // the team's colour, a line behind
   strip(8, 0.4, 0xffffff, 1.5, [0, 0.6, 9], [0, 0.6, 0]); // a low kicker in front
   const pmrem = new THREE.PMREMGenerator(renderer);
   const texture = pmrem.fromScene(room, 0.03).texture;
@@ -78,7 +81,9 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   const backdrop = new THREE.Mesh(
     new THREE.PlaneGeometry(34, 18),
     new THREE.MeshBasicMaterial({
-      map: radialTexture([[0, "rgba(200,6,0,0.55)"], [0.4, "rgba(110,4,0,0.22)"], [1, "rgba(7,7,8,0)"]]),
+      // A neutral glow, tinted by the material's colour: the team's (setAccent).
+      map: radialTexture([[0, "rgba(255,255,255,0.55)"], [0.4, "rgba(150,150,150,0.22)"], [1, "rgba(0,0,0,0)"]]),
+      color: 0xc80600,
       transparent: true,
       depthWrite: false,
     }),
@@ -138,5 +143,13 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   };
   resize();
 
-  return { renderer, scene, camera, composer, bloom, rim, backdrop, resize, render: () => composer.render() };
+  const setAccent = (glow: number, rimColour: number) => {
+    const old = scene.environment;
+    scene.environment = studioEnvironment(renderer, glow);
+    old?.dispose();
+    (backdrop.material as THREE.MeshBasicMaterial).color.setHex(glow);
+    rim.color.setHex(rimColour);
+  };
+
+  return { renderer, scene, camera, composer, bloom, rim, backdrop, setAccent, resize, render: () => composer.render() };
 }

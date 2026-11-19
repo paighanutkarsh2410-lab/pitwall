@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { type Car, type CarInfo, loadCar, loadCars, preload } from "./car";
 import { Telemetry } from "./rev";
 import { createStage } from "./stage";
+import { cssVars, type Theme, themeFor } from "./theme";
 import "./style.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -36,6 +37,8 @@ const fill = $<HTMLElement>(".rev__fill");
 const card = $<HTMLElement>(".card");
 const hero = $<HTMLElement>(".hero");
 const picker = $<HTMLDialogElement>(".picker");
+const wash = $<HTMLElement>(".wash");
+const washWord = $<HTMLElement>(".wash__word");
 
 const RPM_LOW = 4000;
 const RPM_HIGH = 12500;
@@ -173,12 +176,45 @@ async function main() {
     }
   };
 
+  // ---- The team grade -----------------------------------------------------------------
+  let theme: Theme | null = null;
+  const applyTheme = (t: Theme) => {
+    for (const [name, value] of Object.entries(cssVars(t))) document.documentElement.style.setProperty(name, value);
+    stage.setAccent(t.glow, t.rim);
+    streakMats[1].color.setHex(t.streak).multiplyScalar(1.5);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", t.deep);
+    theme = t;
+  };
+  /** The wash: the new team's colour blooms out from the car over everything; at full cover the
+   * grade changes underneath; then it fades, the team's name in script going with it. */
+  const washTo = (t: Theme) => {
+    const at = isPhone() ? ["50%", "26%"] : ["72%", "55%"];
+    const light = `color-mix(in srgb, ${t.accent} 70%, white)`;
+    for (const [k, v] of Object.entries({ "--wx": at[0], "--wy": at[1], "--wash-a": light, "--wash-b": t.accent, "--wash-c": t.deep, "--wash-ink": t.onAccent })) {
+      wash.style.setProperty(k, v);
+    }
+    washWord.textContent = t.label;
+    return gsap
+      .timeline()
+      .set(wash, { visibility: "visible", opacity: 1, clipPath: `circle(0% at ${at[0]} ${at[1]})` })
+      .fromTo(washWord, { scale: 0.8, opacity: 0, xPercent: 6 }, { scale: 1, opacity: 1, xPercent: 0, duration: 0.7, ease: "power3.out" }, 0.1)
+      .to(wash, { clipPath: `circle(150% at ${at[0]} ${at[1]})`, duration: 0.65, ease: "power3.in" }, 0)
+      .fromTo(wash, { "--wash-shift": "0%" }, { "--wash-shift": "-12%", duration: 1.6, ease: "none" }, 0)
+      .add(() => applyTheme(t), 0.68)
+      .to(washWord, { scale: 1.08, opacity: 0, duration: 0.5, ease: "power2.in" }, 1.05)
+      .to(wash, { opacity: 0, duration: 0.6, ease: "power2.out" }, 1.15)
+      .set(wash, { visibility: "hidden" });
+  };
+
   /** Shows a race: its words at once; its car drives in once loaded (the old one drives off). */
   let turn = 0;
   const choose = async (next: Race, first = false) => {
     const mine = ++turn;
     race = next;
     const info = cars.find((c) => c.id === next.car);
+    const nextTheme = themeFor(next.winner.team);
+    if (first || reduce || !theme) applyTheme(nextTheme);
+    else if (nextTheme !== theme) washTo(nextTheme);
     bind(next, info, await hasRecording(next.id));
     $$(".race").forEach((b) => b.setAttribute("aria-current", String(b.dataset.race === next.id)));
     if (!first) {
