@@ -30,6 +30,7 @@ async function main() {
   const [car, telemetry] = await Promise.all([loadCar(), Telemetry.load()]);
   stage.scene.add(car.root);
   if (car.credit) $<HTMLElement>(".foot__model").textContent = car.credit;
+  console.info(`car: ${car.standIn ? "stand-in" : "RB19"}, ${car.wheels.length} wheels`);
 
   // Framing. Desktop: the car fills the right half, nose towards the camera's left.
   // Phone: the car takes the top half of the screen.
@@ -40,8 +41,9 @@ async function main() {
       stage.camera.position.set(0, 3.2, 23);
       stage.camera.lookAt(0, -2.2, 0);
     } else {
-      stage.camera.position.set(0, 1.25, 12.5);
-      stage.camera.lookAt(0, 0.55, 0);
+      // Close on the front: the nose and front wheels fill the right half; the rest runs off-frame.
+      stage.camera.position.set(0, 1.15, 8.2);
+      stage.camera.lookAt(0.4, 0.45, 0);
     }
   };
   frame();
@@ -49,7 +51,7 @@ async function main() {
 
   // Where the car is in the shot, as the scroll moves it.
   const shot = { x: 0, yaw: 0, launch: 0, roll: 0 };
-  const home = () => ({ x: isPhone() ? 0 : 2.9, yaw: THREE.MathUtils.degToRad(isPhone() ? 48 : 56) });
+  const home = () => ({ x: isPhone() ? 0 : 3.1, yaw: THREE.MathUtils.degToRad(isPhone() ? 48 : 50) });
   Object.assign(shot, home());
 
   // Speed streaks: thin light bars that stream past as the car goes, red and white.

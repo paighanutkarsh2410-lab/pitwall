@@ -165,4 +165,8 @@ main { position: relative; z-index: 2; }
   .hero { height: auto; overflow: visible; }
   .hero__scene-space { display: block; height: 100vh; }
   .card { position: relative; min-height: 100vh; clip-path: none; }
+  /* The hero is now taller than one screen: anchor its pieces to the first screen, not the box. */
+  .hero__copy, .hero__ghost { top: 50vh; }
+  .rev { bottom: auto; top: calc(100vh - 8rem); }
+  .corner--br { bottom: auto; top: calc(100vh - 3rem); }
 }

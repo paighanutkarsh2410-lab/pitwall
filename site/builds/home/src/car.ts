@@ -19,6 +19,8 @@ export interface Car {
 }
 
 const LENGTH = 5.6;
+// The source model lies along Z; this turns its nose to -X.
+const MODEL_YAW = -Math.PI / 2;
 const NAVY = 0x1a2340;
 const RED = 0xc8102e;
 const YELLOW = 0xffc906;
@@ -122,6 +124,104 @@ function fit(object: THREE.Object3D, yawToNoseMinusX: number): THREE.Group {
   return holder;
 }
 
+/**
+ * Finds the four wheels in a model where they are part of the body meshes, and moves each into
+ * its own group pivoting on its axle (car space: nose along -X, axles along Z, floor at y = 0).
+ *
+ * A tyre's tread sits outboard of the bodywork at about half its own height, so triangles out
+ * there, between 0.2 m and 0.55 m up, cluster at the two axles. Each wheel is then every
+ * outboard triangle within a tyre's radius of its axle centre. Those triangles leave the body
+ * mesh (its index shrinks) and join a mesh of their own sharing the same vertex buffers.
+ */
+function separateWheels(root: THREE.Group, body: THREE.Object3D): THREE.Object3D[] {
+  const meshes: THREE.Mesh[] = [];
+  body.traverse((o) => {
+    if ((o as THREE.Mesh).isMesh && (o as THREE.Mesh).geometry.index) meshes.push(o as THREE.Mesh);
+  });
+  const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const v = new THREE.Vector3();
+  const centroid = (pos: THREE.BufferAttribute, m: THREE.Matrix4, a: number, b: number, c: number) => {
+    const out = new THREE.Vector3();
+    for (const k of [a, b, c]) out.add(v.fromBufferAttribute(pos, k).applyMatrix4(m));
+    return out.divideScalar(3);
+  };
+
+  // 1. Where are the axles? Outboard tread triangles, split into front (x < 0) and rear.
+  const front: number[] = [];
+  const rear: number[] = [];
+  let maxZ = 0;
+  const box = new THREE.Box3().setFromObject(body);
+  const halfWidth = Math.max(Math.abs(box.min.z), Math.abs(box.max.z));
+  const outboard = halfWidth * 0.72;
+  for (const mesh of meshes) {
+    const m = new THREE.Matrix4().multiplyMatrices(toRoot, mesh.matrixWorld);
+    const pos = mesh.geometry.getAttribute("position") as THREE.BufferAttribute;
+    const index = mesh.geometry.index!;
+    for (let t = 0; t < index.count; t += 3) {
+      const c = centroid(pos, m, index.getX(t), index.getX(t + 1), index.getX(t + 2));
+      if (Math.abs(c.z) > outboard && c.y > 0.2 && c.y < 0.55 && Math.abs(c.x) < LENGTH * 0.42) {
+        (c.x < 0 ? front : rear).push(c.x);
+        maxZ = Math.max(maxZ, Math.abs(c.z));
+      }
+    }
+  }
+  if (front.length < 50 || rear.length < 50) return [];
+  const median = (a: number[]) => a.sort((p, q) => p - q)[a.length >> 1];
+  const axles = [median(front), median(rear)];
+  const radius = 0.36; // an F1 tyre is about 0.72 m across
+
+  // 2. Each wheel: outboard triangles within a tyre's radius of its axle centre.
+  const groups = new Map<string, { mesh: THREE.Mesh; matrix: THREE.Matrix4; tris: number[] }[]>();
+  for (const mesh of meshes) {
+    const m = new THREE.Matrix4().multiplyMatrices(toRoot, mesh.matrixWorld);
+    const pos = mesh.geometry.getAttribute("position") as THREE.BufferAttribute;
+    const index = mesh.geometry.index!;
+    const keep: number[] = [];
+    const taken = new Map<string, number[]>();
+    for (let t = 0; t < index.count; t += 3) {
+      const a = index.getX(t), b = index.getX(t + 1), c3 = index.getX(t + 2);
+      const c = centroid(pos, m, a, b, c3);
+      let wheel: string | null = null;
+      if (Math.abs(c.z) > outboard * 0.92) {
+        for (const [i, ax] of axles.entries()) {
+          if (Math.hypot(c.x - ax, c.y - radius) < radius * 1.04) wheel = `${i ? "R" : "F"}${c.z < 0 ? "L" : "R"}`;
+        }
+      }
+      if (wheel) {
+        if (!taken.has(wheel)) taken.set(wheel, []);
+        taken.get(wheel)!.push(a, b, c3);
+      } else keep.push(a, b, c3);
+    }
+    if (!taken.size) continue;
+    mesh.geometry.setIndex(keep);
+    for (const [wheel, tris] of taken) {
+      if (!groups.has(wheel)) groups.set(wheel, []);
+      groups.get(wheel)!.push({ mesh, matrix: m, tris });
+    }
+  }
+
+  // 3. A pivot per wheel at its axle centre, holding the wheel's triangles.
+  const wheels: THREE.Object3D[] = [];
+  for (const [wheel, parts] of groups) {
+    const pivot = new THREE.Group();
+    pivot.name = `wheel_${wheel}`;
+    pivot.position.set(axles[wheel[0] === "F" ? 0 : 1], radius, (wheel[1] === "L" ? -1 : 1) * (maxZ * 0.9));
+    const offset = new THREE.Matrix4().makeTranslation(-pivot.position.x, -pivot.position.y, -pivot.position.z);
+    for (const { mesh, matrix, tris } of parts) {
+      const geometry = new THREE.BufferGeometry();
+      for (const [name, attr] of Object.entries(mesh.geometry.attributes)) geometry.setAttribute(name, attr);
+      geometry.setIndex(tris);
+      const part = new THREE.Mesh(geometry, mesh.material);
+      part.matrixAutoUpdate = false;
+      part.matrix.multiplyMatrices(offset, matrix);
+      pivot.add(part);
+    }
+    root.add(pivot);
+    wheels.push(pivot);
+  }
+  return wheels;
+}
+
 export async function loadCar(url = "models/rb19.glb"): Promise<Car> {
   try {
     const head = await fetch(url, { method: "HEAD" });
@@ -129,13 +229,11 @@ export async function loadCar(url = "models/rb19.glb"): Promise<Car> {
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
     const gltf = await loader.loadAsync(url);
     const root = new THREE.Group();
-    const body = fit(gltf.scene, 0);
+    const body = fit(gltf.scene, MODEL_YAW);
     root.add(body);
-    // Wheels by name, so they can spin; the rest of the model is the body that shakes.
-    const wheels: THREE.Object3D[] = [];
-    gltf.scene.traverse((o) => {
-      if (/wheel|tyre|tire|rim/i.test(o.name) && !wheels.some((w) => w.getObjectById(o.id))) wheels.push(o);
-    });
+    root.updateMatrixWorld(true);
+    // The wheels are fused into the body meshes; split them out so they can turn on their axles.
+    const wheels = separateWheels(root, body);
     shadowed(root);
     return {
       root,

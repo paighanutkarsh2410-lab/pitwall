@@ -61,7 +61,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.92;
+  renderer.toneMappingExposure = 1.05;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -69,7 +69,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x070708);
   scene.environment = studioEnvironment(renderer);
-  scene.environmentIntensity = 0.9;
+  scene.environmentIntensity = 1.5;
 
   // A long lens: flatter perspective, the way car commercials are shot.
   const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 200);
@@ -102,7 +102,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   scene.add(floor);
 
   // Key light from above and in front; a red rim from behind; a cold fill from the left.
-  const key = new THREE.DirectionalLight(0xffffff, 2.4);
+  const key = new THREE.DirectionalLight(0xffffff, 3.2);
   key.position.set(-3, 9, 6);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
