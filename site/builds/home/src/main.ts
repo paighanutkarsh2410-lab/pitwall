@@ -431,11 +431,13 @@ async function main() {
       .to(shot, { burn: 0, duration: 0.04, ease: "power1.in" }, 0.46)
       // Brakes off: the squat, and away.
       .to(shot, { launch: 1, duration: 0.06, ease: "power2.in" }, 0.46)
-      .to(shot, { roll: 1, duration: 0.52, ease: "power2.in" }, 0.48)
+      // A hard pull-away: the car covers a metre in the first half second, so the front wheels
+      // are plainly rolling before the smoke takes the screen.
+      .to(shot, { roll: 1, duration: 0.52, ease: "power1.in" }, 0.48)
       // The smoke rolls over everything; the card is switched on behind it, and the smoke lifts.
-      .to(shot, { cover: 1, duration: 0.22, ease: "power1.inOut" }, 0.5)
-      .to(shot, { clear: 1, duration: 0.24, ease: "power1.out" }, 0.75)
-      .to(".rev", { opacity: 0, duration: 0.06, ease: "none" }, 0.7);
+      .to(shot, { cover: 1, duration: 0.18, ease: "power1.inOut" }, 0.6)
+      .to(shot, { clear: 1, duration: 0.2, ease: "power1.out" }, 0.79)
+      .to(".rev", { opacity: 0, duration: 0.06, ease: "none" }, 0.74);
   }
   // The carry: the page scrolls itself through the launch. While it runs, the wheel, touch and
   // keys are held so they can't fight it; it takes about as long as a real launch to the first
