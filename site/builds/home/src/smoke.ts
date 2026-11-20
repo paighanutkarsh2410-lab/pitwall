@@ -30,7 +30,7 @@ export function tyreSmoke(scene: THREE.Scene) {
   const puffs: Puff[] = [];
   const group = new THREE.Group();
   scene.add(group);
-  for (let i = 0; i < 160; i++) {
+  for (let i = 0; i < 300; i++) {
     const material = new THREE.SpriteMaterial({ map: texture, color: 0xa4a6ad, transparent: true, depthWrite: false, opacity: 0 });
     const sprite = new THREE.Sprite(material);
     sprite.visible = false;
@@ -46,7 +46,7 @@ export function tyreSmoke(scene: THREE.Scene) {
     emit(amount: number, dt: number, wheels: THREE.Object3D[]) {
       if (amount <= 0.02) return;
       for (const wheel of wheels) {
-        let n = (owed.get(wheel) ?? 0) + amount * 40 * dt;
+        let n = (owed.get(wheel) ?? 0) + amount * 75 * dt;
         wheel.getWorldPosition(at);
         while (n >= 1) {
           n -= 1;
@@ -56,8 +56,8 @@ export function tyreSmoke(scene: THREE.Scene) {
           p.vel.set(0.7 + Math.random() * 1.5, 0.08 + Math.random() * 0.25, (Math.random() - 0.5) * 0.8 + Math.sign(at.z) * 0.25);
           p.age = 0;
           p.life = 2.2 + Math.random() * 1.6;
-          p.peak = (0.16 + Math.random() * 0.14) * Math.min(1, amount * 1.4);
-          p.size = 0.35 + Math.random() * 0.3;
+          p.peak = (0.28 + Math.random() * 0.2) * Math.min(1, amount * 1.4);
+          p.size = 0.5 + Math.random() * 0.45;
           p.turn = (Math.random() - 0.5) * 0.8;
           p.sprite.material.rotation = Math.random() * Math.PI * 2;
           p.sprite.visible = true;
@@ -78,7 +78,7 @@ export function tyreSmoke(scene: THREE.Scene) {
         p.vel.multiplyScalar(1 - Math.min(1, 1.1 * dt)); // the air slows it
         p.vel.y += 0.07 * dt; // warm, it rises
         p.sprite.position.addScaledVector(p.vel, dt);
-        const s = p.size + p.age * 1.25;
+        const s = p.size + p.age * 1.5;
         p.sprite.scale.set(s, s, 1);
         p.sprite.material.rotation += p.turn * dt;
         p.sprite.material.opacity = p.peak * Math.min(1, p.age / 0.18) * (1 - k) * (1 - k * 0.4);

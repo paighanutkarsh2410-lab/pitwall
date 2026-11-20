@@ -6,6 +6,7 @@ import { type Car, type CarInfo, loadCar, loadCars, preload, silhouette } from "
 import { Telemetry } from "./rev";
 import { tyreSmoke } from "./smoke";
 import { createStage } from "./stage";
+import { smokeVeil } from "./veil";
 import { cssVars, THEMES, type Theme, themeFor } from "./theme";
 import "./style.css";
 
@@ -37,6 +38,7 @@ const gearOut = $<HTMLElement>(".rev__g");
 const speedOut = $<HTMLElement>(".rev__s");
 const fill = $<HTMLElement>(".rev__fill");
 const card = $<HTMLElement>(".card");
+const veilCanvas = $<HTMLCanvasElement>(".veil");
 const cue = $<HTMLElement>(".cue__in");
 const CHOICE_KEY = "pitwall.choice"; // shared with the pit wall: the race it opens on
 const hero = $<HTMLElement>(".hero");
@@ -183,8 +185,9 @@ async function main() {
   let telemetry: Telemetry | null = null;
   // The launch, in phases the scroll plays: rev (blips on the grid), turn and creep (side-on,
   // into the middle, the camera pulling back), burn (the burnout), launch (the squat) and roll
-  // (away across the page). Each runs 0 to 1.
-  const shot = { x: 0, yaw: 0, launch: 0, roll: 0, entry: 0, rev: 0, turn: 0, creep: 0, burn: 0 };
+  // (away across the page), then cover (its smoke fills the screen) and clear (the smoke lifts off
+  // the winner's card). Each runs 0 to 1.
+  const shot = { x: 0, yaw: 0, launch: 0, roll: 0, entry: 0, rev: 0, turn: 0, creep: 0, burn: 0, cover: 0, clear: 0 };
   const home = () => ({ x: isPhone() ? 0 : 2.85, yaw: THREE.MathUtils.degToRad(48) });
   Object.assign(shot, home());
 
@@ -390,6 +393,9 @@ async function main() {
   // The scroll, once a race is chosen: pin the hero, then launch (squat, full revs) and roll
   // across the page. The lobby has no launch; its page simply scrolls on to the catalogue.
   let launch: gsap.core.Timeline | null = null;
+  // ?still: the scroll plays the launch only as far as it is scrolled, with no carry, so a check
+  // can stop on any frame of it (site/check-veil.mjs).
+  const still = new URLSearchParams(location.search).has("still");
   function enableLaunch() {
     if (reduce || launch) return;
     launch = gsap.timeline({
@@ -403,6 +409,7 @@ async function main() {
         // return) by itself, as if the page were pulled along by the car.
         onUpdate: (self) => {
           if (auto) return;
+          if (still) return;
           if (self.direction > 0 && self.progress > 0.002 && self.progress < 0.97) carry(self.end, 1);
           else if (self.direction < 0 && self.progress < 0.998 && self.progress > 0.03) carry(self.start, -1);
         },
@@ -423,7 +430,10 @@ async function main() {
       // Brakes off: the squat, and away.
       .to(shot, { launch: 1, duration: 0.06, ease: "power2.in" }, 0.46)
       .to(shot, { roll: 1, duration: 0.52, ease: "power2.in" }, 0.48)
-      .to(".rev", { opacity: 0, duration: 0.06, ease: "none" }, 0.93);
+      // The smoke rolls over everything; the card is switched on behind it, and the smoke lifts.
+      .to(shot, { cover: 1, duration: 0.22, ease: "power1.inOut" }, 0.5)
+      .to(shot, { clear: 1, duration: 0.24, ease: "power1.out" }, 0.75)
+      .to(".rev", { opacity: 0, duration: 0.06, ease: "none" }, 0.7);
   }
   // The carry: the page scrolls itself through the launch. While it runs, the wheel, touch and
   // keys are held so they can't fight it; it takes about as long as a real launch to the first
@@ -460,7 +470,7 @@ async function main() {
     launch.scrollTrigger?.kill(true);
     launch.progress(0).kill();
     launch = null;
-    Object.assign(shot, { launch: 0, roll: 0, rev: 0, turn: 0, creep: 0, burn: 0 }, home());
+    Object.assign(shot, { launch: 0, roll: 0, rev: 0, turn: 0, creep: 0, burn: 0, cover: 0, clear: 0 }, home());
     auto?.kill();
     auto = null;
     gsap.set([".hero__copy--race", ".hero__ghost", ".rev", ".cue"], { clearProps: "transform,opacity" });
@@ -472,7 +482,8 @@ async function main() {
 
   const timer = new THREE.Timer();
   timer.connect(document);
-  const tailWorld = new THREE.Vector3();
+  const tyres = new THREE.Vector3();
+  const veil = smokeVeil(veilCanvas);
   const idle = { t: 0, speed: 0, throttle: 0, gear: 1, rpm: 4000 };
   let distance = 0;
   let spin = 0;
@@ -562,12 +573,17 @@ async function main() {
     stage.bloom.strength = 0.28 + rev * 0.12 + speed * 0.45;
     stage.camera.position.x = isPhone() ? 0 : -shot.roll * 1.2;
 
-    // The card is uncovered behind the car: its left edge follows the car's tail on screen.
+    // The change of page happens inside the smoke: it billows from where the rear tyres did the
+    // burnout until it covers the screen, the card is switched on behind it, and the card comes
+    // into focus as the smoke lifts.
     if (!reduce) {
-      tailWorld.set(x + 2.9, 0.5, 0).project(stage.camera);
-      const tailPct = ((tailWorld.x + 1) / 2) * 100;
-      const reveal = shot.roll > 0.02 ? THREE.MathUtils.clamp(tailPct, 0, 100) : 100;
-      card.style.setProperty("--reveal", `${reveal.toFixed(2)}%`);
+      tyres.set(start + 2.1, 0.3, 0).project(stage.camera);
+      const ox = ((tyres.x + 1) / 2) * window.innerWidth;
+      const oy = ((1 - tyres.y) / 2) * window.innerHeight;
+      veil.draw(shot.cover, shot.clear, ox, oy);
+      const shown = shot.cover > 0.97 || shot.clear > 0;
+      card.style.setProperty("--reveal", shown ? "0%" : "100%");
+      card.style.setProperty("--emerge", String(shown ? shot.clear : 0));
     }
 
     // The readout.

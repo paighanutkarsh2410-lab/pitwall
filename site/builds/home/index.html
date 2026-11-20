@@ -79,8 +79,8 @@
       <span class="corner corner--tl" aria-hidden="true" data-bind="number"></span>
       <span class="corner corner--br" aria-hidden="true" data-bind="number"></span>
 
-      <!-- The page the car rolls over: the winner's title card, revealed behind the car as it
-           passes (main.ts drives --reveal). -->
+      <!-- The winner's title card. It is switched on inside the smoke after the launch and comes
+           into focus as the smoke lifts (main.ts drives --reveal and --emerge; veil.ts the smoke). -->
       <div class="card" aria-label="The winner">
         <div class="card__ghost" aria-hidden="true" data-bind="last"></div>
         <div class="card__body">
@@ -102,6 +102,7 @@
         <span class="corner corner--tr" aria-hidden="true" data-bind="number"></span>
         <span class="corner corner--bl" aria-hidden="true" data-bind="number"></span>
       </div>
+      <canvas class="veil" aria-hidden="true"></canvas>
     </section>
 
     <!-- Before a race is chosen, the whole catalogue is on the page under the car. -->
