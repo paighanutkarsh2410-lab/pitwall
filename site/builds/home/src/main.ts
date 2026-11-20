@@ -158,14 +158,20 @@ async function main() {
   // Framing. Desktop: the car fills the right half, nose towards the camera's left.
   // Phone: the car takes the top half of the screen.
   const isPhone = () => window.innerWidth < 860;
+  // How far the camera stands off: close enough that the car fills the frame. It pulls back as
+  // the car turns side-on, just enough to keep the whole car in shot (a phone is narrow, so more).
+  const DESK_Z = 5.6;
+  const DESK_DOLLY = 3.1;
+  const PHONE_Z = 20;
+  const PHONE_DOLLY = 6.5;
   const frame = () => {
     stage.resize();
     if (isPhone()) {
-      stage.camera.position.set(0, 3.2, 23);
+      stage.camera.position.set(0, 3.2, PHONE_Z);
       stage.camera.lookAt(0, -2.2, 0);
     } else {
       // Close on the front: the nose and front wheels fill the right half; the rest runs off-frame.
-      stage.camera.position.set(0, 1.05, 6.4);
+      stage.camera.position.set(0, 1.05, DESK_Z);
       stage.camera.lookAt(0.75, 0.42, 0);
     }
   };
@@ -407,16 +413,16 @@ async function main() {
       .to(".hero__copy--race", { xPercent: -40, opacity: 0, duration: 0.14, ease: "power2.in" }, 0.02)
       .to(".hero__ghost", { xPercent: -30, opacity: 0, duration: 0.2, ease: "power1.in" }, 0.03)
       // A few hard revs where it stands.
-      .to(shot, { rev: 1, duration: 0.1, ease: "power1.in" }, 0)
+      .to(shot, { rev: 1, duration: 0.12, ease: "power1.in" }, 0)
       // Side-on, into the middle; the camera pulls back to take in the whole car.
-      .to(shot, { turn: 1, duration: 0.16, ease: "power2.inOut" }, 0.1)
-      .to(shot, { creep: 1, duration: 0.18, ease: "power2.inOut" }, 0.1)
+      .to(shot, { turn: 1, duration: 0.14, ease: "power2.inOut" }, 0.12)
+      .to(shot, { creep: 1, duration: 0.15, ease: "power2.inOut" }, 0.12)
       // The burnout: brakes on, rear wheels lit up, smoke.
-      .to(shot, { burn: 1, duration: 0.04, ease: "power2.out" }, 0.25)
-      .to(shot, { burn: 0, duration: 0.04, ease: "power1.in" }, 0.5)
+      .to(shot, { burn: 1, duration: 0.04, ease: "power2.out" }, 0.26)
+      .to(shot, { burn: 0, duration: 0.04, ease: "power1.in" }, 0.46)
       // Brakes off: the squat, and away.
-      .to(shot, { launch: 1, duration: 0.06, ease: "power2.in" }, 0.5)
-      .to(shot, { roll: 1, duration: 0.48, ease: "power2.in" }, 0.52)
+      .to(shot, { launch: 1, duration: 0.06, ease: "power2.in" }, 0.46)
+      .to(shot, { roll: 1, duration: 0.52, ease: "power2.in" }, 0.48)
       .to(".rev", { opacity: 0, duration: 0.06, ease: "none" }, 0.93);
   }
   // The carry: the page scrolls itself through the launch. While it runs, the wheel, touch and
@@ -434,9 +440,9 @@ async function main() {
   function carry(to: number, direction: 1 | -1) {
     auto = gsap.to(window, {
       scrollTo: { y: to, autoKill: false },
-      // Forward at a steady rate, so each phase gets its share: about half a second of revs, a
-      // second turning in, a second and a bit of burnout, two seconds away.
-      duration: direction > 0 ? 4.6 : 2.2,
+      // Forward at a steady rate, so each phase gets its share: about half a second of revs, half
+      // a second turning in, under a second of burnout, two seconds away.
+      duration: direction > 0 ? 3.9 : 2.2,
       ease: direction > 0 ? "none" : "power2.inOut",
       onComplete: () => {
         // Let the scrub settle before listening again, so the tail of the carry isn't read as a new nudge.
@@ -515,16 +521,16 @@ async function main() {
     // The burnout sits the car down on its rear tyres; the launch squats it further.
     car.body.rotation.z =
       Math.sin(t * 47) * 0.005 * shake + torque * 0.009 + (shot.launch * 0.012 + shot.burn * 0.008) * (1 - shot.roll);
-    // The camera feels it too, faintly, at the top of the rev range, more in the burnout. On a
-    // desktop it pulls back as the car turns side-on, so the whole car and its smoke are in frame.
+    // The camera feels it too, faintly, at the top of the rev range, more in the burnout. It pulls
+    // back as the car turns side-on, so the whole car and its smoke are in frame.
     const buzz = reduce ? 0 : (Math.max(0, rev - 0.55) + shot.burn * 0.6) * (1 - shot.roll) * settled;
     stage.camera.position.y = (isPhone() ? 3.2 : 1.05) + Math.sin(t * 71) * 0.006 * buzz;
-    if (!isPhone()) stage.camera.position.z = 6.4 + shot.creep * 5.1;
+    stage.camera.position.z = isPhone() ? PHONE_Z + shot.creep * PHONE_DOLLY : DESK_Z + shot.creep * DESK_DOLLY;
 
     // The roll: the car turns side-on and drives out to the left, faster and faster. A car
     // arriving or leaving after a pick slides along the same line (shot.entry).
     const exit = isPhone() ? -14 : -19;
-    const start = base.x + ((isPhone() ? -0.8 : 0.2) - base.x) * shot.creep;
+    const start = base.x + ((isPhone() ? -0.3 : 0.75) - base.x) * shot.creep;
     const x = start + (exit - start) * shot.roll + shot.entry;
     car.root.position.x = x;
     // In the lobby the car in shadow turns a little, slowly, so the light runs along its bodywork.
