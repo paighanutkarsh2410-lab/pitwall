@@ -363,7 +363,16 @@ def session_info(ref: RaceRef, meeting: dict, drivers: list[dict], lap_rows: lis
 
 
 def fetch(api: OpenF1, race_id: str, progress: Progress = print, force: bool = False) -> Path:
-    """Downloads a race (skipping parts already on disk) and builds its race file."""
+    """Downloads a race (skipping parts already on disk) and builds its race file.
+
+    A race already built under this exact id is returned without asking OpenF1 anything: during a
+    live F1 session OpenF1 refuses every unauthenticated request, past races included, and a race
+    on disk shouldn't depend on that.
+    """
+    ready = race_dir(race_id)
+    if not force and (ready / "race.json").exists():
+        progress(f"{race_id} is already downloaded ({ready})")
+        return ready
     ref = find_race(api, race_id)
     target = race_dir(ref.id)
     parts = target / "parts"

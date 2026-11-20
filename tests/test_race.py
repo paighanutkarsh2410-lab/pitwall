@@ -123,6 +123,14 @@ def test_a_second_fetch_reuses_what_is_on_disk(api, fake, built):
     assert fake.requests["stints"] == before["stints"]
 
 
+def test_a_built_race_needs_no_api_at_all(api, fake, built):
+    # OpenF1 locks everyone out during a live session; a race on disk must still load.
+    before = sum(fake.requests.values())
+    path = races.fetch(api, "2024-sao-paulo", progress=lambda _: None)
+    assert sum(fake.requests.values()) == before
+    assert (path / "race.json").exists()
+
+
 def test_force_downloads_again(api, fake, built):
     before = fake.requests["car_data"]
     races.fetch(api, "2024-sao-paulo", progress=lambda _: None, force=True)
