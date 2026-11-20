@@ -404,7 +404,9 @@ async function main() {
         start: "top top",
         end: "+=300%",
         pin: true,
-        scrub: 0.6,
+        // A short catch-up only: the carry already moves the scroll smoothly, and a long one
+        // makes the car trail the page.
+        scrub: 0.2,
         // A nudge is enough: the first bit of scroll either way plays the whole launch (or its
         // return) by itself, as if the page were pulled along by the car.
         onUpdate: (self) => {
@@ -483,6 +485,9 @@ async function main() {
   const timer = new THREE.Timer();
   timer.connect(document);
   const tyres = new THREE.Vector3();
+  let covered = false;
+  let heroInView = true;
+  new IntersectionObserver(([e]) => (heroInView = e.isIntersecting)).observe(hero);
   const veil = smokeVeil(veilCanvas);
   const idle = { t: 0, speed: 0, throttle: 0, gear: 1, rpm: 4000 };
   let distance = 0;
@@ -582,6 +587,7 @@ async function main() {
       const oy = ((1 - tyres.y) / 2) * window.innerHeight;
       veil.draw(shot.cover, shot.clear, ox, oy);
       const shown = shot.cover > 0.97 || shot.clear > 0;
+      covered = shown && shot.clear >= 0.999;
       card.style.setProperty("--reveal", shown ? "0%" : "100%");
       card.style.setProperty("--emerge", String(shown ? shot.clear : 0));
     }
@@ -592,7 +598,9 @@ async function main() {
     speedOut.textContent = String(Math.round(sample.speed));
     fill.style.transform = `scaleX(${Math.min(1, sample.rpm / RPM_HIGH).toFixed(3)})`;
 
-    stage.render();
+    // Nothing of the 3D scene shows once the card covers it or the hero has scrolled away: don't
+    // draw it.
+    if (heroInView && !covered) stage.render();
   };
   tick();
 }

@@ -67,7 +67,8 @@ export function smokeVeil(canvas: HTMLCanvasElement) {
         drawn = false;
         return;
       }
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      // Half resolution: the smoke is soft anyway, and it is a quarter of the pixels to fill.
+      const dpr = 0.5;
       const w = canvas.clientWidth, h = canvas.clientHeight;
       if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
         canvas.width = Math.round(w * dpr);

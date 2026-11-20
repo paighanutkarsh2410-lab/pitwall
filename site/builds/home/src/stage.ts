@@ -61,8 +61,10 @@ function radialTexture(stops: [number, string][]): THREE.CanvasTexture {
 }
 
 export function createStage(canvas: HTMLCanvasElement): Stage {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+  // No antialias on the canvas: everything is drawn into the composer's targets first, so the
+  // canvas's own multisampling never touched the scene and only cost time.
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -110,7 +112,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   const key = new THREE.DirectionalLight(0xffffff, 3.2);
   key.position.set(-3, 9, 6);
   key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.mapSize.set(1024, 1024);
   key.shadow.camera.left = -8;
   key.shadow.camera.right = 8;
   key.shadow.camera.top = 6;

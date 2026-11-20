@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 
 /**
@@ -298,6 +299,56 @@ function separateWheels(root: THREE.Group, body: THREE.Object3D): THREE.Object3D
   return wheels;
 }
 
+/**
+ * Merges every mesh under `group` into one mesh per material, in the group's own space. A model
+ * arrives as a couple of hundred parts, and each part is a draw call (two, with its shadow):
+ * merged, the car is drawn in a few dozen, which is what keeps the page smooth on a laptop's
+ * built-in graphics. The look doesn't change: same triangles, same materials.
+ */
+function mergeByMaterial(group: THREE.Object3D): void {
+  group.updateMatrixWorld(true);
+  const toGroup = new THREE.Matrix4().copy(group.matrixWorld).invert();
+  const sets = new Map<string, { material: THREE.Material; parts: THREE.BufferGeometry[] }>();
+  const merged: THREE.Mesh[] = [];
+  group.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh || Array.isArray(mesh.material) || (mesh as THREE.SkinnedMesh).isSkinnedMesh) return;
+    if (Object.keys(mesh.geometry.morphAttributes).length) return;
+    const source = mesh.geometry;
+    const geometry = new THREE.BufferGeometry();
+    // Plain float copies: the model's attributes are quantised and interleaved, which can't be
+    // transformed or merged as they are.
+    for (const [name, attr] of Object.entries(source.attributes)) {
+      const a = attr as THREE.BufferAttribute;
+      const out = new Float32Array(a.count * a.itemSize);
+      for (let i = 0; i < a.count; i++) for (let k = 0; k < a.itemSize; k++) out[i * a.itemSize + k] = a.getComponent(i, k);
+      geometry.setAttribute(name, new THREE.BufferAttribute(out, a.itemSize));
+    }
+    const count = source.attributes.position.count;
+    geometry.setIndex(source.index ? Array.from(source.index.array as ArrayLike<number>) : Array.from({ length: count }, (_, i) => i));
+    geometry.applyMatrix4(new THREE.Matrix4().multiplyMatrices(toGroup, mesh.matrixWorld));
+    const key = `${mesh.material.uuid}|${Object.keys(geometry.attributes).sort().join(",")}`;
+    if (!sets.has(key)) sets.set(key, { material: mesh.material, parts: [] });
+    sets.get(key)!.parts.push(geometry);
+    merged.push(mesh);
+  });
+  if (merged.length < 2) return;
+  for (const mesh of merged) mesh.removeFromParent();
+  for (const { material, parts } of sets.values()) {
+    const geometry = parts.length === 1 ? parts[0] : mergeGeometries(parts, false);
+    if (!geometry) continue;
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.matrixAutoUpdate = false;
+    group.add(mesh);
+  }
+  // The emptied parents of the original parts: nothing left to draw or move.
+  const empty: THREE.Object3D[] = [];
+  group.traverse((o) => {
+    if (o !== group && !(o as THREE.Mesh).isMesh && !o.children.length) empty.push(o);
+  });
+  for (const o of empty) o.removeFromParent();
+}
+
 /** A car as public/models/cars.json describes it (written by scripts/prepare-cars.mjs). */
 export interface CarInfo {
   id: string;
@@ -343,6 +394,8 @@ export async function loadCar(info: CarInfo | undefined): Promise<Car> {
     root.updateMatrixWorld(true);
     // The wheels are fused into the body meshes; split them out so they can turn on their axles.
     const wheels = separateWheels(root, body);
+    mergeByMaterial(body);
+    for (const wheel of wheels) mergeByMaterial(wheel);
     shadowed(root);
     const c = info.credit;
     const borrowed = info.borrowed ? ` (shown with the ${c.title} model)` : "";

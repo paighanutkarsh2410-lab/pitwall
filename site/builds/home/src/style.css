@@ -111,8 +111,8 @@ main { position: relative; z-index: 2; }
 .corner--bl { left: var(--gutter); bottom: 2rem; }
 
 /* ------------------------------------------------------------ title card -- */
-/* The winner's card. It is switched on behind the smoke (--reveal 100% to 0%) and sharpens as the
-   smoke lifts (--emerge 0 to 1); main.ts drives both. */
+/* The winner's card. It is switched on behind the smoke (--reveal 100% to 0%) and settles into
+   place as the smoke lifts (--emerge 0 to 1); main.ts drives both. */
 .card {
   position: absolute; inset: 0; z-index: 4; overflow: hidden; display: grid; align-items: center;
   padding: calc(var(--bar-h) + 3rem) var(--gutter) 4rem;
@@ -132,7 +132,7 @@ main { position: relative; z-index: 2; }
 }
 .card__body {
   position: relative; z-index: 2; max-width: 60rem;
-  filter: blur(calc((1 - var(--emerge, 1)) * 16px));
+  opacity: calc(0.35 + 0.65 * var(--emerge, 1));
   transform: scale(calc(1.05 - 0.05 * var(--emerge, 1)));
   transform-origin: left center;
 }
