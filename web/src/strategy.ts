@@ -74,3 +74,27 @@ export function teams(board: Board): { team: string; colour: string | null }[] {
   for (const c of board.cars) if (c.team && !seen.has(c.team)) seen.set(c.team, c.colour);
   return [...seen].map(([team, colour]) => ({ team, colour })).sort((a, b) => a.team.localeCompare(b.team));
 }
+
+/**
+ * The laps in which a stop pays for itself, for the stint a car is on: a rough window, not a
+ * prediction. On tyres that lose `deg` ms a lap more each lap, a stint L laps old has lost
+ * deg·L²/2 against fresh tyres; a stop starts to pay once that passes the pit loss, at
+ * L = √(2 · pitLoss / deg). The window is that tyre age ± 15% (at least two laps), counted from
+ * when this set of tyres was new. None when the tyres aren't wearing measurably, when the stop
+ * costs aren't known yet, or when the window would open in the last three laps (run to the flag).
+ */
+export function pitWindow(
+  stint: { lap_start: number; tyre_age_start: number } | undefined,
+  degMsPerLap: number | null | undefined,
+  pitLossMs: number | null | undefined,
+  totalLaps: number,
+): [number, number] | null {
+  if (!stint || degMsPerLap == null || pitLossMs == null || degMsPerLap < 15) return null;
+  const age = Math.sqrt((2 * pitLossMs) / degMsPerLap);
+  const newAt = stint.lap_start - stint.tyre_age_start;
+  const spread = Math.max(2, age * 0.15);
+  const from = Math.round(newAt + age - spread);
+  const to = Math.min(totalLaps, Math.round(newAt + age + spread));
+  if (from > totalLaps - 3 || to < stint.lap_start) return null;
+  return [Math.max(from, stint.lap_start + 1), to];
+}

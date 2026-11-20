@@ -198,16 +198,27 @@ export function useRecording(watch: number[]): RecordedLive {
       const board = search((k) => k.boards);
       const strategy = search((k) => k.strategy);
       const positions = search((k) => k.positions);
+      // Telemetry since it was last sent, backfilled after a seek or a change of cars. The minutes
+      // it spans have to be loaded first: reading past a chunk that hasn't arrived would skip its
+      // samples for good, and the chart would start half empty.
       const fresh: Record<string, Sample[]> = {};
-      for (const car of watching.current) {
-        for (let k = chunkIndex(c.sentT); k <= i; k++) {
-          const ch = loaded.current.get(k);
-          for (const s of ch?.telemetry[String(car)] ?? []) {
-            if (s[0] > c.sentT && s[0] <= t) (fresh[car] ??= []).push(s);
-          }
+      let complete = true;
+      for (let k = Math.max(0, chunkIndex(c.sentT)); k <= i; k++) {
+        if (!loaded.current.has(k)) {
+          load(k);
+          complete = false;
         }
       }
-      c.sentT = t;
+      if (complete) {
+        for (const car of watching.current) {
+          for (let k = Math.max(0, chunkIndex(c.sentT)); k <= i; k++) {
+            for (const s of loaded.current.get(k)?.telemetry[String(car)] ?? []) {
+              if (s[0] > c.sentT && s[0] <= t) (fresh[car] ??= []).push(s);
+            }
+          }
+        }
+        c.sentT = t;
+      }
       setView((v) => {
         const samples = { ...v.samples };
         for (const [car, list] of Object.entries(fresh)) {
@@ -264,17 +275,39 @@ export function useRecording(watch: number[]): RecordedLive {
   };
 }
 
-/** The race trace (gap to the leader at the end of each lap), from the recording's story. */
+interface StoryLap {
+  lap: number;
+  order: number[];
+  gaps: Record<string, number | string>;
+  compounds: Record<string, string | null>;
+}
+let story: Promise<{ grid: Record<string, number>; laps: StoryLap[] }> | null = null;
+
+/**
+ * The race trace from the recording's story: every car's gap to the leader and its place at the
+ * end of each lap, the starting grid, and the tyres each car started on.
+ */
 export async function recordedTrace(upToLap: number): Promise<Trace> {
-  const story = await fetch(`${DATA()}story.json`).then((r) => r.json());
+  story ??= fetch(`${DATA()}story.json`).then((r) => r.json());
+  const { grid, laps } = await story;
   const cars: Record<string, [number, number][]> = {};
-  // story.laps[n].gaps are taken as the leader starts lap n+1: the gaps at the end of lap n.
-  for (const entry of story.laps as { lap: number; gaps: Record<string, number | string> }[]) {
+  const positions: Record<string, [number, number][]> = {};
+  // story.laps[n] is taken as the leader starts lap n+1: its gaps and order are the end of lap n.
+  for (const entry of laps) {
     const finished = entry.lap - 1;
     if (finished < 1 || finished > upToLap) continue;
     for (const [car, gap] of Object.entries(entry.gaps)) {
       if (typeof gap === "number") (cars[car] ??= []).push([finished, gap]);
     }
+    entry.order.forEach((car, i) => (positions[String(car)] ??= []).push([finished, i + 1]));
   }
-  return { laps: Math.max(1, upToLap), cars };
+  // The tyres on the grid: the compound each car is first seen on (lap 1's is not yet timed).
+  const startTyres: Record<string, string | null> = {};
+  for (const entry of laps) {
+    for (const [car, compound] of Object.entries(entry.compounds ?? {})) {
+      if (compound && !(car in startTyres)) startTyres[car] = compound;
+    }
+    if (Object.keys(startTyres).length >= Object.keys(grid ?? {}).length) break;
+  }
+  return { laps: Math.max(1, upToLap), cars, positions, startTyres, grid };
 }

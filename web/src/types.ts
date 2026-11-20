@@ -129,6 +129,12 @@ export interface CatalogRace {
 export interface Trace {
   laps: number;
   cars: Record<string, [number, number][]>;
+  /** Each car's place at the end of each lap. Derived from the gaps when the source has none. */
+  positions?: Record<string, [number, number][]>;
+  /** The tyres each car started on, where known before the start. */
+  startTyres?: Record<string, string | null>;
+  /** The starting grid: car -> grid slot. */
+  grid?: Record<string, number>;
 }
 
 export interface RaceOnDisk {

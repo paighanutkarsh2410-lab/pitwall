@@ -70,6 +70,19 @@ export function teamColour(colour: string | null | undefined): string {
   return colour && /^[0-9a-f]{6}$/i.test(colour) ? `#${colour}` : "#8a8f98";
 }
 
+/**
+ * The colours of the two cars on the wall's comparisons (trace, telemetry, head to head): the
+ * first in its team colour; a teammate in white, so two cars of one team never read as one;
+ * a car from another team in its own colour.
+ */
+export function pairColours(cars: { colour: string | null; team: string }[]): string[] {
+  return cars.map((c, i) => {
+    const base = teamColour(c.colour);
+    if (i === 0) return base;
+    return c.team === cars[0].team || base === teamColour(cars[0].colour) ? "#f4f3f1" : base;
+  });
+}
+
 /** A team colour mixed towards white: the second car of a team, told apart from the first. */
 export function shade(hex: string, towardsWhite: number): string {
   const n = parseInt(hex.slice(1), 16);

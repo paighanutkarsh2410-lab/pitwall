@@ -12,6 +12,7 @@ import { teamCars, teams } from "./strategy";
 import type { Replay } from "./types";
 import { DRIVER, RACE, RECORDING, type Playback } from "./recording";
 import { useLive } from "./useLive";
+import { useTrace } from "./trace";
 
 const TEAM_KEY = "pitwall.team";
 
@@ -42,6 +43,7 @@ export function App() {
   const [watch, setWatch] = useState<number[]>([]);
   const live = useLive(watch);
   const { board, strategy } = live;
+  const trace = useTrace(board);
 
   useEffect(() => {
     if (RECORDING) return; // the public site has no API: no logos, no replay to poll
@@ -202,9 +204,9 @@ export function App() {
           <div className="side">
             <TeamCars board={board} cars={ours} strategy={strategy} />
           </div>
-          <RaceTrace board={board} team={team} run={board.run} strategy={strategy} />
+          <RaceTrace board={board} team={team} trace={trace} strategy={strategy} />
           <TelemetryCompare cars={compared} samples={live.samples} />
-          <StrategyPanel board={board} strategy={strategy} team={team} />
+          <StrategyPanel board={board} strategy={strategy} team={team} startTyres={trace?.startTyres} />
           <RaceControl messages={board.messages} />
         </main>
       ) : (
