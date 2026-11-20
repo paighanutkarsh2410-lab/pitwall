@@ -427,7 +427,7 @@ async function main() {
       .to(shot, { turn: 1, duration: 0.14, ease: "power2.inOut" }, 0.12)
       .to(shot, { creep: 1, duration: 0.15, ease: "power2.inOut" }, 0.12)
       // The burnout: brakes on, rear wheels lit up, smoke.
-      .to(shot, { burn: 1, duration: 0.04, ease: "power2.out" }, 0.26)
+      .to(shot, { burn: 1, duration: 0.04, ease: "power2.out" }, 0.24)
       .to(shot, { burn: 0, duration: 0.04, ease: "power1.in" }, 0.46)
       // Brakes off: the squat, and away.
       .to(shot, { launch: 1, duration: 0.06, ease: "power2.in" }, 0.46)
@@ -490,8 +490,12 @@ async function main() {
   new IntersectionObserver(([e]) => (heroInView = e.isIntersecting)).observe(hero);
   const veil = smokeVeil(veilCanvas);
   const idle = { t: 0, speed: 0, throttle: 0, gear: 1, rpm: 4000 };
-  let distance = 0;
-  let spin = 0;
+  // Each axle's drawn angle, and how fast a wheel may be drawn to turn (rad/s): about a fifth
+  // of a turn a frame at 60 fps.
+  let frontTurn = 0;
+  let rearTurn = 0;
+  let smokeLevel = 0;
+  const WHEEL_RATE_CAP = 20;
   let gridClock = 0;
   const smoke = tyreSmoke(stage.scene);
   let lastRpm = 0;
@@ -554,15 +558,24 @@ async function main() {
     const sway = race || reduce ? 0 : Math.sin(t * 0.35) * 0.12;
     const fishtail = (Math.sin(t * 7.3) * 0.035 + Math.sin(t * 13.1) * 0.012) * shot.burn;
     car.root.rotation.y = (base.yaw + sway) * (1 - shot.turn) + fishtail;
-    distance += Math.abs(x - lastX);
+    // The wheels: all four roll with the car (forward is towards -x; the tyre is 0.36 m in
+    // radius), and in the burnout and off the line the rears spin far faster than the car moves.
+    // A wheel turning more than about a fifth of a turn between frames strobes and looks as if it
+    // stands still, so what is drawn is capped below that: it reads as flat-out wheelspin.
+    const rolled = (lastX - x) / 0.36;
     lastX = x;
-    // Wheelspin: the rear wheels turn far faster than the car moves, in the burnout and off the line.
     const offTheLine = shot.launch * Math.max(0, 1 - shot.roll / 0.12);
-    spin += dt * (shot.burn * 62 + offTheLine * 40);
-    for (const w of car.wheels) w.rotation.z = distance / 0.36 + (w.name.startsWith("wheel_R") ? spin : 0);
+    const cap = WHEEL_RATE_CAP * dt;
+    const clampTurn = (a: number) => Math.max(-cap, Math.min(cap, a));
+    frontTurn += clampTurn(rolled);
+    rearTurn += clampTurn(rolled + dt * (shot.burn * 62 + offTheLine * 40));
+    for (const w of car.wheels) w.rotation.z = w.name.startsWith("wheel_R") ? rearTurn : frontTurn;
 
-    // Tyre smoke from the rear contact patches while they spin.
-    const smoking = reduce ? 0 : Math.max(shot.burn, offTheLine * 0.8);
+    // Tyre smoke from the rear contact patches. It follows the wheelspin by a beat, the way rubber
+    // has to heat before it smokes: the tyres light up first, then the smoke rolls off them.
+    const want = Math.max(shot.burn, offTheLine * 0.8);
+    smokeLevel += (want - smokeLevel) * Math.min(1, dt * (want > smokeLevel ? 2.4 : 5));
+    const smoking = reduce ? 0 : smokeLevel;
     smoke.emit(smoking, dt, car.wheels.filter((w) => w.name.startsWith("wheel_R")));
     smoke.update(dt);
 

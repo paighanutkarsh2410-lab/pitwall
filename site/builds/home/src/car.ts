@@ -127,10 +127,11 @@ function fit(object: THREE.Object3D, yawToNoseMinusX: number): THREE.Group {
  * Finds the four wheels in a model where they are part of the body meshes, and moves each into
  * its own group pivoting on its axle (car space: nose along -X, axles along Z, floor at y = 0).
  *
- * 1. The axles: a tyre's tread sits outboard of the bodywork at about half its own height, so
- *    triangles out there, between 0.2 m and 0.55 m up, cluster at the front and rear axles.
- * 2. The wheels: each mesh is split into connected pieces (triangles sharing vertices). A piece
- *    joins a wheel only if all of it lies inside that wheel's cylinder: a tyre, a rim, a hub nut.
+ * 1. The wheels: each mesh is split into connected pieces (triangles sharing vertices), and the
+ *    tyres are the round, tyre-sized pieces standing outboard of the body; they give each
+ *    wheel's centre, radius and width. (If a model has no such pieces, the axles are estimated
+ *    from triangles out at the car's sides at hub height instead.)
+ * 2. A piece joins a wheel only if all of it lies inside that wheel: a tyre, a rim, a hub nut.
  *    A piece reaching outside it (a suspension arm, a wing endplate, a brake duct fixed to the
  *    upright) stays with the body. So a tyre is never half taken, which would leave a torn,
  *    sawtooth edge once the taken half turns.
@@ -160,44 +161,11 @@ function separateWheels(root: THREE.Group, body: THREE.Object3D): THREE.Object3D
     return { mesh, matrix: m, xyz };
   });
 
-  // 1. The axles.
-  const front: number[] = [];
-  const rear: number[] = [];
-  let maxZ = 0;
-  const box = new THREE.Box3().setFromObject(body);
-  const halfWidth = Math.max(Math.abs(box.min.z), Math.abs(box.max.z));
-  const outboard = halfWidth * 0.72;
-  for (const { mesh, xyz } of spaces) {
-    const index = mesh.geometry.index!;
-    for (let t = 0; t < index.count; t += 3) {
-      let x = 0, y = 0, z = 0;
-      for (let k = 0; k < 3; k++) {
-        const i = index.getX(t + k) * 3;
-        x += xyz[i];
-        y += xyz[i + 1];
-        z += xyz[i + 2];
-      }
-      x /= 3;
-      y /= 3;
-      z /= 3;
-      if (Math.abs(z) > outboard && y > 0.2 && y < 0.55 && Math.abs(x) < LENGTH * 0.42) {
-        (x < 0 ? front : rear).push(x);
-        maxZ = Math.max(maxZ, Math.abs(z));
-      }
-    }
-  }
-  if (front.length < 50 || rear.length < 50) return [];
-  const median = (a: number[]) => a.sort((p, q) => p - q)[a.length >> 1];
-  const axles = [median(front), median(rear)];
-  const REACH = 0.47; // a tyre's radius (about 0.36 m) with room for the axle estimate being off
-  const inner = maxZ - 0.55; // a wheel's inboard face is well within this of the car's outer edge
-
-  // 2. Connected pieces wholly inside a wheel's cylinder, and centred on its axle.
+  // Every mesh split into connected pieces (triangles sharing vertices), each with its extent.
   type Piece = { wheel: string; box: THREE.Box3 };
   const found = spaces.map(({ mesh, xyz }) => {
     const index = mesh.geometry.index!;
     const n = xyz.length / 3;
-    // Union-find over the vertices the triangles join.
     const parent = new Int32Array(n);
     for (let i = 0; i < n; i++) parent[i] = i;
     const find = (i: number): number => {
@@ -214,39 +182,100 @@ function separateWheels(root: THREE.Group, body: THREE.Object3D): THREE.Object3D
         if (a !== b) parent[b] = a;
       }
     }
-    // Which wheel each piece fits inside ("" for none), and its extent.
     const pieces = new Map<number, Piece>();
-    for (let i = 0; i < n; i++) {
+    for (let t = 0; t < index.count; t++) {
+      const i = index.getX(t);
       const r = find(i);
-      const piece = pieces.get(r);
-      if (piece?.wheel === "") continue;
-      const x = xyz[i * 3], y = xyz[i * 3 + 1], z = xyz[i * 3 + 2];
-      let wheel = "";
-      if (Math.abs(z) > inner) {
-        for (const [k, ax] of axles.entries()) {
-          if (Math.hypot(x - ax, y - 0.36) < REACH) wheel = `${k ? "R" : "F"}${z < 0 ? "L" : "R"}`;
-        }
-      }
-      if (!piece) pieces.set(r, { wheel, box: new THREE.Box3().expandByPoint(v.set(x, y, z)) });
-      else if (piece.wheel !== wheel) piece.wheel = "";
-      else piece.box.expandByPoint(v.set(x, y, z));
+      if (!pieces.has(r)) pieces.set(r, { wheel: "", box: new THREE.Box3() });
+      pieces.get(r)!.box.expandByPoint(v.set(xyz[i * 3], xyz[i * 3 + 1], xyz[i * 3 + 2]));
     }
     return { find, pieces };
   });
-  // Each wheel's centre, from its tyre-sized pieces (or everything it found, if none).
-  const centres = new Map<string, THREE.Vector3>();
-  for (const big of [true, false]) {
-    const boxes = new Map<string, THREE.Box3>();
-    for (const { pieces } of found) {
-      for (const { wheel, box } of pieces.values()) {
-        if (!wheel || centres.has(wheel) || (big && box.max.y - box.min.y < 0.5)) continue;
-        if (!boxes.has(wheel)) boxes.set(wheel, new THREE.Box3());
-        boxes.get(wheel)!.union(box);
+
+  // 1. The wheels: where each is, how big, how wide. Found from the tyres themselves: pieces as
+  //    tall as they are long (round), the size of a tyre, standing on the floor, outboard of the
+  //    body. (Estimating the axles from geometry out at the car's sides instead was thrown off by
+  //    a wide front-wing endplate on some cars, which put the front axle 20 cm too far forward:
+  //    the tyre no longer fitted the wheel and stayed fused to the body.)
+  type Wheel = { c: THREE.Vector3; r: number; zmin: number; zmax: number };
+  const box = new THREE.Box3().setFromObject(body);
+  const halfWidth = Math.max(Math.abs(box.min.z), Math.abs(box.max.z));
+  const key = (x: number, z: number) => `${x < 0 ? "F" : "R"}${z < 0 ? "L" : "R"}`;
+  const tyreBoxes = new Map<string, THREE.Box3>();
+  const size = new THREE.Vector3();
+  const mid = new THREE.Vector3();
+  for (const { pieces } of found) {
+    for (const { box: b } of pieces.values()) {
+      b.getSize(size);
+      b.getCenter(mid);
+      const round = Math.abs(size.x - size.y) < 0.14;
+      const tyreSized = size.y > 0.5 && size.y < 0.95 && size.z > 0.04 && size.z < 0.6;
+      if (!round || !tyreSized || mid.y < 0.24 || mid.y > 0.52 || Math.abs(mid.z) < halfWidth * 0.45 || b.min.y > 0.12) continue;
+      const k = key(mid.x, mid.z);
+      if (!tyreBoxes.has(k)) tyreBoxes.set(k, new THREE.Box3());
+      tyreBoxes.get(k)!.union(b);
+    }
+  }
+  const wheelsAt = new Map<string, Wheel>();
+  for (const [k, b] of tyreBoxes) {
+    b.getSize(size);
+    wheelsAt.set(k, { c: b.getCenter(new THREE.Vector3()), r: Math.max(size.x, size.y) / 2, zmin: b.min.z, zmax: b.max.z });
+  }
+  if (wheelsAt.size < 4) {
+    // No clear tyres (a model with its tyres fused to the rims): fall back to the axles, from
+    // triangles out at the car's sides at hub height.
+    const front: number[] = [];
+    const rear: number[] = [];
+    let maxZ = 0;
+    const outboard = halfWidth * 0.72;
+    for (const { mesh, xyz } of spaces) {
+      const index = mesh.geometry.index!;
+      for (let t = 0; t < index.count; t += 3) {
+        let x = 0, y = 0, z = 0;
+        for (let k = 0; k < 3; k++) {
+          const i = index.getX(t + k) * 3;
+          x += xyz[i];
+          y += xyz[i + 1];
+          z += xyz[i + 2];
+        }
+        x /= 3;
+        y /= 3;
+        z /= 3;
+        if (Math.abs(z) > outboard && y > 0.2 && y < 0.55 && Math.abs(x) < LENGTH * 0.42) {
+          (x < 0 ? front : rear).push(x);
+          maxZ = Math.max(maxZ, Math.abs(z));
+        }
       }
     }
-    for (const [wheel, box] of boxes) centres.set(wheel, box.getCenter(new THREE.Vector3()));
+    if (front.length < 50 || rear.length < 50) return [];
+    const median = (a: number[]) => a.sort((p, q) => p - q)[a.length >> 1];
+    for (const [x, side] of [median(front), median(rear)].flatMap((x) => [[x, -1], [x, 1]] as const)) {
+      const k = key(x, side);
+      if (wheelsAt.has(k)) continue;
+      const inner = maxZ - 0.55;
+      wheelsAt.set(k, { c: new THREE.Vector3(x, 0.36, side * (maxZ - 0.2)), r: 0.42, zmin: side < 0 ? -maxZ - 0.1 : inner, zmax: side < 0 ? -inner : maxZ + 0.1 });
+    }
   }
-  // A piece turns with its wheel only if it is centred on the axle, as a tyre, rim or nut is.
+
+  // 2. A piece belongs to a wheel if it lies wholly inside it (within the tyre's radius round
+  //    the hub and across its width): a tyre, a rim, a nut. A piece reaching outside it (a
+  //    suspension arm, a wing endplate, a brake duct on the upright) stays with the body, so a
+  //    tyre is never half taken, which would leave a torn edge once the taken half turns.
+  const SLACK = 0.06;
+  for (const { pieces } of found) {
+    for (const piece of pieces.values()) {
+      const b = piece.box;
+      for (const [k, w] of wheelsAt) {
+        const inX = b.min.x > w.c.x - w.r - SLACK && b.max.x < w.c.x + w.r + SLACK;
+        const inY = b.min.y > w.c.y - w.r - SLACK && b.max.y < w.c.y + w.r + SLACK;
+        const inZ = b.min.z > w.zmin - 0.1 && b.max.z < w.zmax + 0.1;
+        if (inX && inY && inZ) piece.wheel = k;
+      }
+    }
+  }
+  const centres = new Map([...wheelsAt].map(([k, w]) => [k, w.c]));
+  // Of those, only pieces centred on the hub turn (tyre, rim, nut, disc); an off-centre one
+  // inside the wheel (a caliper, a duct vane) would swing round the axle, so it stays still.
   const centred = (p: Piece) => {
     const c = centres.get(p.wheel);
     if (!c) return false;
