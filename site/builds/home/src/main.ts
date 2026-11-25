@@ -30,6 +30,16 @@ interface Race {
   rev: number[][];
 }
 
+/** A race still to be run (season.yml moves it to the races, with its recording, afterwards). */
+interface Upcoming {
+  id: string;
+  year: number;
+  date: string;
+  starts_at: string;
+  name: string;
+  circuit: string;
+}
+
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = <T extends Element>(s: string) => document.querySelector(s) as T;
 const $$ = (s: string) => Array.from(document.querySelectorAll<HTMLElement>(s));
@@ -91,7 +101,24 @@ function bind(race: Race, info: CarInfo | undefined, hasRecording: boolean) {
 
 // ---- The picker ------------------------------------------------------------------------------
 
-function buildPicker(races: Race[], cars: CarInfo[], choose: (race: Race) => void) {
+/** A race to come, as a row of its season: when it starts, in the visitor's own time. */
+function upcomingRow(race: Upcoming, round: number): HTMLLIElement {
+  const li = document.createElement("li");
+  const row = document.createElement("div");
+  row.className = "race race--upcoming";
+  row.innerHTML = `<span class="race__round">${String(round).padStart(2, "0")}</span>
+    <span class="race__name"><span></span><small></small></span><span class="race__when"></span>`;
+  row.querySelector(".race__name span")!.textContent = race.name.replace(/ Grand Prix$/, "");
+  const start = new Date(race.starts_at);
+  const when = start.toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  row.querySelector("small")!.textContent = `${race.circuit} · ${when}`;
+  row.querySelector(".race__when")!.textContent = Date.now() < start.getTime() ? "Upcoming" : "Data soon";
+  row.title = "Added automatically once the race has been run and its data is out";
+  li.append(row);
+  return li;
+}
+
+function buildPicker(races: Race[], upcoming: Upcoming[], cars: CarInfo[], choose: (race: Race) => void) {
   const seasons = new Map<number, Race[]>();
   for (const r of [...races].sort((a, b) => a.date.localeCompare(b.date))) {
     if (!seasons.has(r.year)) seasons.set(r.year, []);
@@ -127,6 +154,7 @@ function buildPicker(races: Race[], cars: CarInfo[], choose: (race: Race) => voi
       li.append(b);
       ol.append(li);
     });
+    upcoming.filter((r) => r.year === year).forEach((r, i) => ol.append(upcomingRow(r, list.length + i + 1)));
     box.append(col);
   }
   }
@@ -142,15 +170,15 @@ function buildPicker(races: Race[], cars: CarInfo[], choose: (race: Race) => voi
 
 async function main() {
   const stage = createStage($<HTMLCanvasElement>(".stage"));
-  const [cars, races] = await Promise.all([
+  const [cars, { races: playable, upcoming = [] }] = await Promise.all([
     loadCars(),
-    fetch("races.json").then((r) => (r.ok ? r.json() : { races: [] })).then((d) => d.races as Race[]),
+    fetch("races.json").then((r) => (r.ok ? r.json() : { races: [] })).then((d) => d as { races: Race[]; upcoming?: Upcoming[] }),
   ]);
-  const playable = races.filter((r) => r.car);
   $$('[data-bind="count"]').forEach((el) => (el.textContent = playable.length ? `${playable.length} races` : ""));
   const years = playable.map((r) => r.year);
   if (years.length) $$('[data-bind="span"]').forEach((el) => (el.textContent = `${Math.min(...years)} – ${Math.max(...years)}`));
-  const latest = [...playable].sort((a, b) => b.date.localeCompare(a.date))[0];
+  // A winner whose car has no model here opens with the newest car that has one, in shadow.
+  const latest = playable.filter((r) => r.car).sort((a, b) => b.date.localeCompare(a.date))[0];
   // The race in the address (?race=...), or none: the page opens on every race, not one.
   const fromUrl = () => playable.find((r) => r.id === new URLSearchParams(location.search).get("race")) ?? null;
   let race: Race | null = fromUrl();
@@ -267,7 +295,7 @@ async function main() {
     if (mine !== turn) return; // something else was chosen meanwhile
     if (leaving) stage.scene.remove(leaving.root);
     // The cue to scroll comes up as the winner's car brakes into place.
-    if (!dark) gsap.fromTo(cue, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out", delay: reduce ? 0 : first ? 0.9 : 1.2 });
+    if (race) gsap.fromTo(cue, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out", delay: reduce ? 0 : first ? 0.9 : 1.2 });
     car = dark ? silhouette(arriving) : arriving;
     stage.scene.add(car.root);
     $<HTMLElement>(".foot__model").textContent = car.credit;
@@ -300,7 +328,7 @@ async function main() {
       first,
     );
     $$(".race").forEach((b) => b.setAttribute("aria-current", String(b.dataset.race === next.id)));
-    await bringCar(info, false, mine, first);
+    await bringCar(info ?? lobbyCar, !info, mine, first);
   };
 
   /** The race chosen last time, offered again in the lobby. */
@@ -480,7 +508,7 @@ async function main() {
     gsap.set([".hero__copy--race", ".hero__ghost", ".rev", ".cue"], { clearProps: "transform,opacity" });
   }
 
-  buildPicker(playable, cars, (r) => void choose(r));
+  buildPicker(playable, upcoming, cars, (r) => void choose(r));
   if (race) await choose(race, true);
   else await toLobby(true);
 

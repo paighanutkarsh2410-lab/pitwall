@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -23,6 +23,7 @@ from pitwall import race as races  # noqa: E402
 from pitwall.openf1 import OpenF1  # noqa: E402
 
 CARS = ROOT / "site" / "builds" / "home" / "cars.config.json"
+CATALOGUE = ROOT / "site" / "builds" / "home" / "public" / "races.json"
 
 
 def car_for(season: int, team: str, cars: list[dict]) -> str | None:
@@ -117,6 +118,18 @@ def entry(api: OpenF1, ref: races.RaceRef, meeting: dict, cars: list[dict]) -> d
     }
 
 
+def read(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"races": []}
+
+
+def write(path: Path, catalogue: dict) -> None:
+    """Saves the catalogue, oldest race first."""
+    catalogue["races"].sort(key=lambda r: r["date"])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(catalogue, ensure_ascii=False, separators=(",", ":"))
+    path.write_text(text, encoding="utf-8", newline="\n")
+
+
 def main() -> int:
     target = Path(sys.argv[1])
     years = range(2023, 2027)
@@ -124,41 +137,29 @@ def main() -> int:
         a, _, b = sys.argv[sys.argv.index("--years") + 1].partition("-")
         years = range(int(a), int(b or a) + 1)
     cars = json.loads(CARS.read_text(encoding="utf-8"))["cars"]
-    known = (
-        {r["id"]: r for r in json.loads(target.read_text(encoding="utf-8"))["races"]}
-        if target.exists()
-        else {}
-    )
+    catalogue = read(target)
+    # Every race already there stays, whichever years this run looks at.
+    known = {r["id"]: r for r in catalogue["races"]}
     api = OpenF1()
-    out = []
     for year in years:
         meetings = {m["meeting_key"]: m for m in api.get("meetings", year=year)}
         for ref in races.list_races(api, year):
-            if ref.id in known and known[ref.id].get("rev"):
-                out.append(known[ref.id])
+            if known.get(ref.id, {}).get("rev"):
                 continue
-            from datetime import UTC, datetime
-
             if ref.free_from() > datetime.now(UTC):
                 continue  # not run yet, or not historical yet
             e = entry(api, ref, meetings.get(ref.meeting_key, {}), cars)
             if e:
-                out.append(e)
+                known[ref.id] = e
                 w = e["winner"]
                 print(
                     f"{e['id']:24} {w['code']} {e['car'] or '?':6} grid {e['grid']}",
                     f"rev {len(e['rev'])}",
                     flush=True,
                 )
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(
-                    json.dumps({"races": out}, ensure_ascii=False, separators=(",", ":")),
-                    encoding="utf-8",
-                )
-    target.write_text(
-        json.dumps({"races": out}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
-    )
-    print(f"{len(out)} races in {target}")
+                catalogue["races"] = list(known.values())
+                write(target, catalogue)
+    print(f"{len(known)} races in {target}")
     return 0
 
 

@@ -204,6 +204,9 @@ main { position: relative; z-index: 2; }
 }
 .race:hover, .race:focus-visible { background: rgb(255 255 255 / 0.05); border-left-color: var(--team, var(--accent)); outline: none; }
 .race[aria-current="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); border-left-color: var(--accent); }
+.race--upcoming { cursor: default; opacity: 0.62; }
+.race--upcoming:hover { background: none; border-left-color: transparent; }
+.race__when { font: 600 0.66rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
 .race__round { font: 600 0.72rem/1 var(--mono); color: var(--ink-soft); }
 .race__name { font-weight: 700; font-size: 0.9rem; line-height: 1.25; }
 .race__name small { display: block; font: 500 0.68rem/1.4 var(--mono); color: var(--ink-soft); letter-spacing: 0.04em; }

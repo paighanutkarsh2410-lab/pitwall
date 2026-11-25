@@ -5,7 +5,8 @@ name: Site
 #
 # The race recordings are not in Git and not rebuilt here: recording every race since 2023 takes
 # hours at OpenF1's free rate limit. scripts/publish_site_data.sh records them on a workstation
-# and uploads them as one archive to the `site-data` release; this workflow downloads it.
+# and uploads them as one archive to the `site-data` release; season.yml adds each new race to
+# the release as a file of its own. This workflow downloads them all.
 on:
   push:
     branches: [main]
@@ -40,8 +41,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p site/public/data
-          gh release download site-data --repo "${{ github.repository }}" --pattern "site-data.tar.gz" --dir /tmp
-          tar -xzf /tmp/site-data.tar.gz -C site/public/data
+          gh release download site-data --repo "${{ github.repository }}" --pattern "*.tar.gz" --dir /tmp/site-data
+          # The main archive, then the races added since (race-<id>.tar.gz, by season.yml).
+          tar -xzf /tmp/site-data/site-data.tar.gz -C site/public/data
+          for f in /tmp/site-data/race-*.tar.gz; do
+            if [ -e "$f" ]; then tar -xzf "$f" -C site/public/data; fi
+          done
           echo "races: $(ls site/public/data | wc -l)"
       - uses: actions/setup-node@v4
         with:
