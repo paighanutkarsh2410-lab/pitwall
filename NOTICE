@@ -1,0 +1,10 @@
+Pitwall's own code and documentation are under the MIT License (see LICENSE).
+
+These are not, and keep their own terms:
+
+- The 3D car models (site/builds/home/public/models/*.glb) are by their Sketchfab authors under
+  CC BY 4.0. Each model's author, title and link are in site/builds/home/public/models/cars.json
+  and are credited on the site.
+- Race data comes from OpenF1 (https://openf1.org) and is not part of this repository's license.
+- Team names, colours, liveries and sponsor marks belong to their owners. This is an unofficial
+  project, not associated with Formula 1, the FIA or any team.
